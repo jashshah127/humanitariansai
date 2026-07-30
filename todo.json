@@ -1,0 +1,157 @@
+{
+  "video": "claude-debunked",
+  "metadata": {
+    "title": "Claude, Debunked?",
+    "slug": "claude-debunked",
+    "topic": "Computational Skepticism",
+    "register": "Teardown",
+    "audience": "Claude",
+    "brand": "claude",
+    "voice": "NikBearBrown",
+    "voice_env": "ELEVENLABS_VOICE_NIKBEARBROWN",
+    "engine": "kokoro",
+    "palette": "claude",
+    "style_preset": "claude",
+    "ground": "#FAF9F5",
+    "color_semantics": "claude fidelity UI beats; the WHEEL keeps the original infographic's palette on purpose \u2014 it is the exhibit being graded, not a brand surface.",
+    "greeting": "Talofa, Bear",
+    "greeting_note": "hello lexicon: Samoan. Wagwan check: charsum('claude-debunked') % 10 == 1, not 0.",
+    "playlist": "Claude for Education",
+    "note": "ILLUSTRATE LAW reel: UI at B00 (with RESULT lines) / verdict / handoff / outro. B01-B04 + B06 = the EcosystemWheel exhibit (grade/startAt/focus props, scaled onto the 16:9 stage) \u2014 legal because the wheel IS the subject under audit; B05 PredictCard. Rebuilds the partial 1000x1200 ecosystem-wheel-graded.mp4 as a full 16:9 episode. Evidence: FACTCHECK-THE-FACTCHECK.md (verified 2026-07-14, primary sources cited per claim).",
+    "tags": [
+      "Claude",
+      "fact check",
+      "AI ecosystem",
+      "infographic",
+      "Anthropic",
+      "Claude Marketplace",
+      "Claude Security",
+      "Fable 5",
+      "Nik Bear Brown"
+    ],
+    "voice_kokoro": "am_onyx",
+    "build": {
+      "at": "2026-07-30T14:23:04",
+      "cut": "master",
+      "filled": 10,
+      "of": 10,
+      "slates": [],
+      "skin_warnings": []
+    }
+  },
+  "source_of_truth": "beat_sheet.json \u2014 edit the sheet, not this file",
+  "beats_total": 10,
+  "beats_open": 0,
+  "beats": [
+    {
+      "beat_id": "B00",
+      "status": "filled",
+      "on_disk": "media/B00.mp4",
+      "method": "remotion",
+      "who": "pipeline",
+      "scene_hint": null,
+      "prompt": null,
+      "slot": "media/B00.mp4",
+      "label": "The twist that the debunker committed the mirror-image sin, un-inventing real products like Claude M"
+    },
+    {
+      "beat_id": "B01",
+      "status": "filled",
+      "on_disk": "media/B01.mp4",
+      "method": "remotion",
+      "who": "pipeline",
+      "scene_hint": null,
+      "prompt": null,
+      "slot": "media/B01.mp4",
+      "label": "The wheel first, rebuilt box by box. Eight categories, symmetric spokes, a tidy grid of products \u2014 a"
+    },
+    {
+      "beat_id": "B02",
+      "status": "filled",
+      "on_disk": "media/B02.mp4",
+      "method": "remotion",
+      "who": "pipeline",
+      "scene_hint": null,
+      "prompt": null,
+      "slot": "media/B02.mp4",
+      "label": "The core holds up. Opus, Haiku, the Agent S D K, Managed Agents, Claude Code, Cowork, M C P \u2014 real a"
+    },
+    {
+      "beat_id": "B03",
+      "status": "filled",
+      "on_disk": "media/B03.mp4",
+      "method": "remotion",
+      "who": "pipeline",
+      "scene_hint": null,
+      "prompt": null,
+      "slot": "media/B03.mp4",
+      "label": "The stale ring. Sonnet four point six on the wheel \u2014 it's Sonnet five now. Mythos still invite-only,"
+    },
+    {
+      "beat_id": "B04",
+      "status": "filled",
+      "on_disk": "media/B04.mp4",
+      "method": "remotion",
+      "who": "pipeline",
+      "scene_hint": null,
+      "prompt": null,
+      "slot": "media/B04.mp4",
+      "label": "Now the invented ring \u2014 thirteen boxes. Claude Context Store. Safe Artifact Repo. A Constitutional A"
+    },
+    {
+      "beat_id": "B05",
+      "status": "filled",
+      "on_disk": "media/B05.mp4",
+      "method": "remotion",
+      "who": "pipeline",
+      "scene_hint": null,
+      "prompt": null,
+      "slot": "media/B05.mp4",
+      "label": "So the fact-check wins? Not yet. If the wheel's sin is inventing products to complete a pattern \u2014 pr"
+    },
+    {
+      "beat_id": "B06",
+      "status": "filled",
+      "on_disk": "media/B06.mp4",
+      "method": "remotion",
+      "who": "pipeline",
+      "scene_hint": null,
+      "prompt": null,
+      "slot": "media/B06.mp4",
+      "label": "It un-invents them. Claude Marketplace \u2014 filed as fake \u2014 is a real product; enterprises buy partner "
+    },
+    {
+      "beat_id": "B07",
+      "status": "filled",
+      "on_disk": "media/B07.mp4",
+      "method": "remotion",
+      "who": "pipeline",
+      "scene_hint": null,
+      "prompt": null,
+      "slot": "media/B07.mp4",
+      "label": "Let's recap with Claude. The verdict, both directions. The wheel: real core, stale models, thirteen "
+    },
+    {
+      "beat_id": "B08",
+      "status": "filled",
+      "on_disk": "media/B08.mp4",
+      "method": "remotion",
+      "who": "pipeline",
+      "scene_hint": null,
+      "prompt": null,
+      "slot": "media/B08.mp4",
+      "label": "Your turn \u2014 run this on the next viral diagram in your feed, and hold one line: no source, no verdic"
+    },
+    {
+      "beat_id": "B09",
+      "status": "filled",
+      "on_disk": "media/B09.mp4",
+      "method": "remotion",
+      "who": "pipeline",
+      "scene_hint": null,
+      "prompt": null,
+      "slot": "media/B09.mp4",
+      "label": "Claude, Debunked?"
+    }
+  ]
+}
