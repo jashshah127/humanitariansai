@@ -1,0 +1,33 @@
+{
+  "name": "solve_physics_problem",
+  "description": "Solves a mechanics or E&M problem GIVEN an already-parsed set of knowns and the requested unknowns. The calling model is responsible for Parse (extracting knowns/unknowns/units from the raw problem text or figure) — this tool never does that judgment call, and it never evaluates arithmetic itself; every number comes from SymPy, both as a final numeric value and as the symbolic equation that produced it. It runs Retrieve -> Plan -> Solve -> Verify and returns a structured Solution object that always includes a `route`: 'deterministic_script' means the answer is final and reproducible (call it as many times as you want, same input always gives the same output — do not re-derive it yourself); 'no_deterministic_path' means nothing in the formula-card KB covers this problem, so you (the calling model) should solve it directly and this call should also be logged as a coverage gap; 'ambiguous_multiple_deterministic_paths' means more than one formula card could apply and produced different answers for the same requested unknown — the response includes every candidate's answer, and you (the calling model) need to pick which formula actually fits the problem's context, not re-run the arithmetic. Designed to be called as a background/async step within a larger conversation turn, since the LLM-fallback routes may take meaningfully longer than the sub-millisecond deterministic-script path.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "problem_id": {
+        "type": "string",
+        "description": "Stable identifier for logging/traceability, e.g. 'MECH-014' or a session-scoped UUID."
+      },
+      "raw_problem": {
+        "type": "string",
+        "description": "The original problem text (or a transcription of the figure), kept on the Solution object so every downstream number stays traceable back to source."
+      },
+      "knowns": {
+        "type": "object",
+        "description": "Map of known variable name -> numeric value, in SI base units unless the variable name itself specifies otherwise (e.g. 'theta_deg' is degrees, not radians). See formula_kb.py for each card's exact expected variable names.",
+        "additionalProperties": {"type": "number"}
+      },
+      "unknowns": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "Variable name(s) being solved for, e.g. ['v', 's'] or ['r', 'T']. Note: some variable names are reused across cards with different physical meaning (e.g. 'T' means tension in the Atwood card but orbital/cyclotron period elsewhere) — pass topic_hint to disambiguate, and see the KNOWN LIMITATIONS section of README.md before scaling this KB."
+      },
+      "topic_hint": {
+        "type": "string",
+        "enum": ["Mechanics", "E&M"],
+        "description": "Optional. Biases card retrieval toward this topic when a symbol name is ambiguous across topics."
+      }
+    },
+    "required": ["problem_id", "raw_problem", "knowns", "unknowns"]
+  }
+}

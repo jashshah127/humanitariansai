@@ -1,0 +1,11 @@
+sympy>=1.14
+scipy>=1.17
+openpyxl>=3.1
+pandas>=2.0
+
+# Only needed for eval/pull_ugphysics_subset.py (run elsewhere -- needs network)
+datasets>=2.19
+
+# Only needed for eval/baseline_eval.py (run elsewhere -- needs API keys)
+anthropic>=0.40
+openai>=1.50
