@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+.DS_Store
+
+# API keys -- never commit
+*_api_key*
+.anthropic
+.openai
+
+# UGPhysics is CC-BY-NC-SA-4.0 (NonCommercial); Medhavy is commercial.
+# Keep the accuracy numbers (ours); not the dataset text (theirs).
+ugphysics_*.csv
+baseline_results_*.json

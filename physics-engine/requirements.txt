@@ -1,0 +1,11 @@
+sympy>=1.14
+scipy>=1.17
+openpyxl>=3.1
+pandas>=2.0
+
+# Phase 1 parse stage -- only needed when using ClaudeLLM (StubLLM needs neither)
+anthropic>=0.40
+openai>=1.50
+
+# eval/pull_ugphysics_subset.py -- run where there is network
+datasets>=2.19
