@@ -4,6 +4,16 @@ A first real implementation of the pipeline in the brief: **Retrieve → Plan �
 Solution object.** Not a spec, not a mock — this runs, and its answers are checked against the
 Phase-0 golden set.
 
+**One thing worth being precise about, since it's the actual contribution and not a footnote:**
+this does not always "hand off to a solver and get back a verified answer." Every call resolves
+to one of three routes — `deterministic_script` (exactly one formula applies; the answer is
+final and provably reproducible), `ambiguous_multiple_deterministic_paths` (more than one formula
+applies; every candidate answer comes back, flagged for arbitration instead of one getting picked
+silently), or `no_deterministic_path` (nothing in the knowledge base covers it; the calling LLM
+falls back to its own reasoning, no worse off than without this tool). The honesty about *which*
+of the three applies — not just returning a number — is what the V2 routing section further down
+actually adds.
+
 ## Run it
 
 ```bash
@@ -12,8 +22,10 @@ python3 demo.py
 ```
 
 Solves all 16 Phase-0 golden-set problems and checks each result against the value already
-verified there. Currently: **16/16 match**, plus one deliberate "missing known" case showing the
-gap → curation-queue path instead of a silent wrong answer.
+verified there. Currently: **16/16 match** via the `deterministic_script` route, plus one
+deliberate "missing known" case showing the `no_deterministic_path` → curation-queue path, and
+one constructed case showing `ambiguous_multiple_deterministic_paths` catching a real conflict
+instead of silently picking a side.
 
 ## Files
 

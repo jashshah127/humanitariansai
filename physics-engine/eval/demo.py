@@ -4,9 +4,10 @@ answers against the values already verified (independently, via SymPy) in the
 golden-set spreadsheet. Also runs one deliberate gap case to show the
 no-card-matched / closure-failure path routes to the curate loop instead of failing silently.
 """
-import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "engine"))
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "engine"))
 
 import sympy as sp
 from scipy import constants as C

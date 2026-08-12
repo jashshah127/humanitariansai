@@ -1,0 +1,51 @@
+{
+  "name": "physics_engine_mode",
+  "version": "1.0.0-phase1",
+  "description": "The contract Medhavy integrates against when the Physics Engine toggle is on. Analogous in placement to Google's AI Mode: a mode selector attached to the input, not a separate destination. The toggle's purpose is to make verification status visible to the student, so the single most important field in the response is `verification` -- not `answer`. An integration that renders the answer and drops the badge has removed the reason this mode exists.",
+
+  "request": {
+    "type": "object",
+    "properties": {
+      "query": {"type": "string", "description": "The student's problem, as typed. Raw text; no pre-parsing required by the caller."},
+      "session_id": {"type": "string", "description": "Required. Groups queries into a session for latency and engagement telemetry. NOT a student identifier."},
+      "student_id": {"type": ["string", "null"], "description": "Optional and currently unused by this mode. Only grade mode (Phase 2) needs it, and it must not be sent until the data processing agreement question (Q6 in the brief) is settled. The event log will reject student_id on any event not scoped to carry it."},
+      "render": {"type": "string", "enum": ["solve", "tutor"], "default": "solve", "description": "solve returns the answer; tutor returns a progressive hint ladder and deliberately withholds the answer. Same underlying solution object, rendered differently -- per the brief's one-object-three-surfaces design. grade is Phase 2 and not implemented."},
+      "problem_id": {"type": ["string", "null"], "description": "Optional stable id for traceability across logs."}
+    },
+    "required": ["query", "session_id"]
+  },
+
+  "response": {
+    "type": "object",
+    "properties": {
+      "verification": {
+        "type": "string",
+        "enum": ["verified", "needs_review", "unverified"],
+        "description": "THE field to render. verified = a symbolic solver computed this and it is reproducible. needs_review = several physical principles fit and disagree; each candidate is computed correctly but choosing needs context. unverified = nothing in the formula library covers this, so no symbolic check happened."
+      },
+      "badge": {"type": "string", "description": "Human-readable label for the verification state, safe to show a student verbatim."},
+      "needs_llm_completion": {
+        "type": "boolean",
+        "description": "True means this engine has done all it can and Medhavy's own model must write the final answer -- but must present it under the badge above, NOT as verified. This is the single field most likely to be misimplemented: treating it as 'fall back silently' reintroduces exactly the confidently-wrong-answer failure the engine exists to prevent."
+      },
+      "answer": {"type": ["object", "null"], "description": "variable name -> numeric value. Null in tutor render (withheld on purpose) and on the needs_review / unverified routes."},
+      "candidates": {"type": ["array", "null"], "description": "Present only on needs_review. Each entry has principle, applies_when, and answer. Render all of them; picking one silently defeats the route."},
+      "hints": {"type": ["array", "null"], "description": "Present only in tutor render. Ordered ladder, each rung revealing more than the last, answer last. Reveal one at a time."},
+      "explanation": {"type": "string", "description": "Plain-language account of what was done. Assembled from the card and the verify stage, not generated, so it cannot claim a check that did not run."},
+      "formula_used": {"type": ["string", "null"], "description": "Name of the physical principle applied. Worth surfacing -- it is most of why a student should believe the answer."},
+      "assumptions": {"type": "array", "description": "Applicability conditions the matched formula assumes. Worth showing; several common wrong answers come from applying a formula outside its conditions."},
+      "sources": {"type": "object", "description": "variable name -> the phrase in the student's own text it was read from. Enables 'we read 25 m/s from <this>' and makes a misparse traceable rather than mysterious."},
+      "route": {"type": "string", "description": "Internal routing decision, for logs and debugging. Do not render to students."},
+      "latency_ms": {"type": "number"},
+      "trace": {"type": ["object", "null"], "description": "Full solution object: every pipeline stage, verification checks, symbolic forms. For debugging and for the event log; not for the UI."}
+    },
+    "required": ["verification", "badge", "needs_llm_completion", "explanation", "route"]
+  },
+
+  "ui_guidance": {
+    "verified": "Show the answer with the badge. Surfacing formula_used and assumptions alongside is what makes it a verification tool rather than a fast calculator.",
+    "needs_review": "Show every candidate with its applies_when condition. This is a genuine teaching moment -- the student choosing between two principles based on their problem's context is the physics. Do not auto-pick.",
+    "unverified": "Medhavy's model answers normally, but the badge must be visible. This is the same answer quality as toggle-off; the badge is the only difference, and it is the whole point.",
+    "never": "Never render an unverified or needs_review answer under a verified badge. The engine cannot prevent that on the client side -- it is an integration invariant, and the reason needs_llm_completion is a required field."
+  }
+}

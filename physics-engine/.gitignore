@@ -2,16 +2,14 @@ __pycache__/
 *.pyc
 .env
 .venv/
+.DS_Store
 
-# API keys -- never commit these
+# API keys -- never commit
 *_api_key*
 .anthropic
 .openai
 
-# UGPhysics is CC-BY-NC-SA-4.0 -- NonCommercial. Medhavy is a commercial product.
-# Pull the data locally to run crosschecks, but don't commit the raw problem/solution
-# text into this repo. Keep the accuracy NUMBERS (those are our own results, not their
-# data) -- just not the underlying dataset files.
+# UGPhysics is CC-BY-NC-SA-4.0 (NonCommercial); Medhavy is commercial.
+# Keep the accuracy numbers (ours); not the dataset text (theirs).
 ugphysics_*.csv
 baseline_results_*.json
-.DS_Store

@@ -1,52 +1,52 @@
 # Physics problem-solving engine
 
-A deterministic-first solver Medhavy calls as a tool: SymPy/SciPy do every calculation,
-the LLM only handles problem understanding and formula selection, and every call
-returns an explicit `route` — `deterministic_script`, `ambiguous_multiple_deterministic_paths`,
-or `no_deterministic_path` — instead of leaving "script vs. LLM" implicit.
+A deterministic-first physics solver Medhavy calls as a tool. SymPy/SciPy do every
+calculation; a language model is used only for reading the problem. Every call returns an
+explicit **route** — so "did this get verified, or not?" is always answered, never implied.
 
-Full design reasoning: [`docs/Physics_Engine_Brief_v2.md`](docs/Physics_Engine_Brief_v2.md)
-and [`docs/Gru_SDD_Physics_Engine.md`](docs/Gru_SDD_Physics_Engine.md).
-
-## Structure
-
-```
-engine/       The solver itself. models.py, formula_kb.py (16 starter cards), pipeline.py.
-golden_set/   16 verified problems (Phase 0 starter) + the locked topic-scope decisions.
-eval/         demo.py (regression check), baseline_eval.py, pull_ugphysics_subset.py.
-docs/         The brief and the design-doc writeup.
-```
+Design reasoning: [`docs/Physics_Engine_Brief_v2.md`](docs/Physics_Engine_Brief_v2.md) ·
+[`docs/Gru_SDD_Physics_Engine.md`](docs/Gru_SDD_Physics_Engine.md)
+Phase 1 detail: [`PHASE1.md`](PHASE1.md)
 
 ## Quick start
 
 ```bash
 pip install -r requirements.txt
-cd eval && python3 demo.py
+python3 eval/ci_check.py        # all 7 invariants, Phase 0 + Phase 1
+python3 eval/demo_phase1.py     # raw problem text -> rendered answer
+python3 eval/demo.py            # Phase 0 core: 16/16 + determinism + ambiguity
 ```
 
-Should print `16/16 problems solved with answers matching the golden set exactly`,
-plus a determinism proof (same call ×10, byte-identical) and an ambiguity-detection
-demo (two valid formulas, same unknown, correctly flagged instead of guessed).
+## Structure
 
-## Current status (Aug 3, 2026)
+```
+engine/   Solver core (Phase 0) + parse, event log, mode layer, units (Phase 1)
+eval/     ci_check.py, both demos, baseline harness, dataset puller
+golden_set/  16 verified problems, locked topic scope
+docs/     Brief and design writeup
+```
 
-- [x] Topic scope locked — `golden_set/Phase0_Starter_Kit_Topic_Scope_and_Golden_Set.xlsx`
-- [x] Engine built, V2 routing responds to reviewer feedback on script-vs-LLM determinism
-- [x] Crosschecked against one real external source (OpenStax Atwood-machine example — exact match)
-- [ ] **Golden set is 16 problems, not the 150–300 Phase 0 calls for.** Two parallel paths:
-      real course material (Q3 to Sri/Nik, still open) and/or UGPhysics's Classical
-      Mechanics + Electromagnetism subsets (~2,450 problems, right difficulty level —
-      see `eval/pull_ugphysics_subset.py`, needs to be run somewhere with network access)
-- [ ] **No baseline number yet.** `eval/baseline_eval.py` measures plain LLM chain-of-thought
-      accuracy (no tools) on the same problems — needs API keys, run wherever convenient
-- [ ] Formula-card symbol collisions (`T` = tension on one card, period on two others) —
-      caught by the ambiguity-routing logic so far, not yet fixed at the source; see
-      the "Named domain risk" section in `engine/README.md` before adding cards past 16
+## Status
 
-## A note on data licensing
+**Phase 0 — done, on `physics-engine` branch.** Topic scope locked. 16-card formula KB.
+16/16 golden-set problems solved. Determinism proven (10 identical runs). Ambiguity
+routing catches conflicting formulas instead of guessing. One external crosscheck against
+OpenStax matched exactly.
 
-UGPhysics is CC-BY-NC-SA-4.0 (NonCommercial). Fine to pull locally and run the crosscheck
-against; the accuracy *numbers* that comes out are ours to keep and share. The raw
-problem/solution *text* shouldn't get committed into this repo, since it powers a
-commercial product — that's why `ugphysics_*.csv` is gitignored. If this repo is ever
-made public, worth a second look at anything derived from it before that happens.
+**Phase 1 — this upload.** Raw problem text now goes in the front. Parse stage (LLM,
+injectable). Event log with identity scoping enforced in code. Physics Engine mode with
+solve and tutor rendering. Unit/dimension auditing. Seven CI invariants, all green.
+
+**Open, and not papered over:**
+- Parse quality is unmeasured — the demo uses a stub LLM. Real-model accuracy needs an API key.
+- No baseline number yet, so "better than plain chain-of-thought" remains unquantified.
+- 1,226 UGPhysics problems pulled, never run through the engine.
+- Q6 (data processing agreement / IRB) still open with Prof. Sri and Prof. Nik. No
+  student-linked data should flow until it's answered.
+- Medhavy's backend still unseen from here; integration effort unestimated.
+
+## Data licensing
+
+UGPhysics is CC-BY-NC-SA-4.0 (NonCommercial). Fine to pull locally and evaluate against;
+the accuracy numbers are ours to keep. The raw problem text shouldn't be committed here —
+hence `ugphysics_*.csv` in `.gitignore`. Worth a second look before this repo ever goes public.
