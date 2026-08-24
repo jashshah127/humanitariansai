@@ -117,9 +117,9 @@ class GeminiLLM:
     this provider at anything student-linked. Use a paid tier or a local model for that.
     """
 
-    def __init__(self, model="gemini-2.5-flash", min_interval=4.2):
+    def __init__(self, model="gemini-flash-lite-latest", min_interval=6.5):
         self.model = model
-        self.min_interval = min_interval   # ~14 req/min, just under the 15 RPM cap
+        self.min_interval = min_interval   # ~9 req/min, under the 10 RPM free-tier floor
         self._last = 0.0
 
     def __call__(self, prompt):
@@ -130,29 +130,41 @@ class GeminiLLM:
 
         key = os.environ.get("GEMINI_API_KEY")
         if not key:
-            raise ParseError("GEMINI_API_KEY not set. Get a free key at aistudio.google.com")
+            raise ParseError("GEMINI_API_KEY not set. Get a free key at aistudio.google.com/apikey")
 
         wait = self.min_interval - (time.time() - self._last)
         if wait > 0:
             time.sleep(wait)
         self._last = time.time()
 
+        # Auth goes in the X-goog-api-key HEADER, not a ?key= query parameter. Newer
+        # AI Studio keys (the AQ.* format) are auth keys and the header is what Google's
+        # own current examples use; the query-param form is the older style and can be
+        # rejected outright.
         url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
-               f"{self.model}:generateContent?key={key}")
+               f"{self.model}:generateContent")
         body = _json.dumps({
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": 0},
         }).encode()
-        req = urllib.request.Request(url, data=body,
-                                     headers={"Content-Type": "application/json"})
+        req = urllib.request.Request(url, data=body, headers={
+            "Content-Type": "application/json",
+            "X-goog-api-key": key,
+        })
         for attempt in range(4):
             try:
                 with urllib.request.urlopen(req, timeout=60) as r:
                     data = _json.loads(r.read())
                 return data["candidates"][0]["content"]["parts"][0]["text"]
             except Exception as e:
+                detail = ""
+                if hasattr(e, "read"):
+                    try:
+                        detail = e.read().decode()[:300]
+                    except Exception:
+                        pass
                 if attempt == 3:
-                    raise ParseError(f"Gemini call failed after retries: {e}")
+                    raise ParseError(f"Gemini call failed after retries: {e} {detail}")
                 time.sleep(2 ** attempt)   # backoff on 429 / transient errors
 
 

@@ -1,0 +1,174 @@
+{
+  "summary": {
+    "total": 40,
+    "comparable": 2,
+    "match": 0,
+    "mismatch": 2,
+    "not_comparable": 38,
+    "unparseable": 0,
+    "accuracy_on_comparable": 0.0,
+    "comparable_fraction": 0.05
+  },
+  "rows": [
+    {
+      "problem_id": "ClassicalElectromagnetism-2",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-3",
+      "verdict": "parse_failed",
+      "detail": "malformed JSON in model response: Expecting value: line 4 column 20 (char 58)"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-6",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-7",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-9",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-11",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-12",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-13",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-14",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-15",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-16",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-17",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-18",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-19",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-20",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-21",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-22",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-23",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-24",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-26",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-27",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-28",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-30",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-31",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-32",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-33",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-34",
+      "verdict": "parse_failed",
+      "detail": "malformed JSON in model response: Invalid \\escape: line 4 column 86 (char 124)"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-35",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-36",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-37",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-38",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-39",
+      "verdict": "unverified_route",
+      "detail": "no_deterministic_path"
+    }
+  ]
+}
