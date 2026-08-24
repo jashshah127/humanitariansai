@@ -20,6 +20,7 @@ text." Every known therefore carries the phrase it came from, so a wrong answer 
 be traced to a misread number rather than blamed vaguely on "the parser."
 """
 import json
+import sympy as sp
 import re
 
 from formula_kb import ALL_CARDS
@@ -43,19 +44,24 @@ Rules:
 - Convert every value to SI base units before reporting it (25 km -> 25000, 100 uF -> 0.0001,
   2 kOhm -> 2000). Report the converted number, not the original.
 - EXCEPTION: `theta_deg` stays in degrees. Never convert it to radians.
+- IF A QUANTITY IS GIVEN AS A SYMBOL RATHER THAN A NUMBER -- "a particle of mass m",
+  "a charge q", "radius R" -- report it as {{"symbolic": true}} instead of a value.
+  DO NOT invent a number like 1.0 for it. The engine can solve symbolically and will
+  return a formula; inventing a value produces a confidently wrong number instead.
 - Charges go in as MAGNITUDES (q1_abs, q2_abs are always positive). Sign only sets direction,
   which is not your job.
 - Do NOT include physical constants (g, G, k_e, epsilon_0, mu_0). Those are supplied
   automatically. Only report what the problem itself states.
 - "starts from rest" / "initially at rest" means v0 = 0. State it explicitly.
 - For every known, include the exact phrase from the problem it came from.
-- If a quantity you would need is genuinely not stated, leave it out. Do not guess it.
+- If a quantity you would need is genuinely not stated at all, leave it out. Do not guess it.
 
 Respond with ONLY a JSON object, no prose and no markdown fences:
 
 {{
-  "topic_hint": "Mechanics" or "E&M",
-  "knowns": {{"<name>": {{"value": <number>, "source": "<exact phrase from the problem>"}}}},
+  "topic_hint": "Mechanics" or "E&M" or "Thermodynamics",
+  "knowns": {{"<name>": {{"value": <number>, "source": "<exact phrase>"}},
+              "<name>": {{"symbolic": true, "source": "<exact phrase>"}}}},
   "unknowns": ["<name>", ...],
   "notes": "<anything ambiguous, or empty string>"
 }}
@@ -117,7 +123,7 @@ class GeminiLLM:
     this provider at anything student-linked. Use a paid tier or a local model for that.
     """
 
-    def __init__(self, model="gemini-flash-lite-latest", min_interval=6.5):
+    def __init__(self, model="gemini-flash-latest", min_interval=6.5):
         self.model = model
         self.min_interval = min_interval   # ~9 req/min, under the 10 RPM free-tier floor
         self._last = 0.0
@@ -273,24 +279,39 @@ def parse_problem(raw_problem, llm):
     if not isinstance(raw_knowns, dict) or not isinstance(raw_unknowns, list):
         raise ParseError("model returned knowns/unknowns in an unexpected shape")
 
-    # Accept both the rich {"value":..,"source":..} form and a bare number, so a
-    # slightly-off model response degrades to a working parse minus traceability
-    # rather than failing outright.
-    values, sources = {}, {}
+    # Accept the rich {"value":..,"source":..} form, the {"symbolic": true} form, and a
+    # bare number, so a slightly-off model response degrades to a working parse rather
+    # than failing outright.
+    values, sources, symbolic_names = {}, {}, []
     for name, entry in raw_knowns.items():
         if isinstance(entry, dict):
-            values[name] = entry.get("value")
+            if entry.get("symbolic") is True or entry.get("value") in ("symbolic", None):
+                values[name] = sp.Symbol(name)
+                symbolic_names.append(name)
+            else:
+                values[name] = entry.get("value")
             sources[name] = entry.get("source", "")
         else:
             values[name] = entry
             sources[name] = ""
 
-    bad = [n for n, v in values.items() if not isinstance(v, (int, float))]
+    bad = [n for n, v in values.items()
+           if not isinstance(v, (int, float)) and not isinstance(v, sp.Basic)]
     if bad:
-        raise ParseError(f"non-numeric values for: {bad}")
+        raise ParseError(f"non-numeric, non-symbolic values for: {bad}")
 
     knowns, unknowns, norm_report = normalize_parse(values, raw_unknowns)
     sources = {normalize_name(k)[0]: v for k, v in sources.items()}
+
+    # Symbols must carry the CANONICAL name, not whatever the model called it. Creating
+    # them before normalization produced answers like 9.8*(-mass_1 + mass_2)/(mass_1 +
+    # mass_2) -- correct algebra wearing the parser's vocabulary instead of the physics
+    # vocabulary, which is useless to a student and unmatchable against a benchmark.
+    symbolic_names = [normalize_name(n)[0] for n in symbolic_names]
+    for canonical in symbolic_names:
+        if canonical in knowns:
+            knowns[canonical] = sp.Symbol(canonical)
+
     knowns, injected = inject_constants(knowns, unknowns, ALL_CARDS)
 
     return {
@@ -299,6 +320,7 @@ def parse_problem(raw_problem, llm):
         "topic_hint": payload.get("topic_hint"),
         "sources": sources,
         "injected": injected,
+        "symbolic_knowns": symbolic_names,
         "normalization": norm_report,
         "notes": payload.get("notes", ""),
         "raw": payload,

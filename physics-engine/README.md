@@ -14,6 +14,7 @@ Design reasoning: [`docs/Physics_Engine_Brief_v2.md`](docs/Physics_Engine_Brief_
 | [`COVERAGE.md`](COVERAGE.md) | 16 cards against 1,226 real problems, by topic |
 | [`MARKET.md`](MARKET.md) | Commercial read, including the MATLAB/Mathematica question |
 | [`PHASE1.md`](PHASE1.md) | What Phase 1 added and what's still open |
+| [`PHASE2.md`](PHASE2.md) | Grade mode, thermo expansion, and why Phase 3 shouldn't start |
 
 ## Quick start
 
@@ -39,8 +40,9 @@ Phase 0 invariants
 Phase 1 invariants
   [PASS] end-to-end from raw text: raw text -> answer for all 5 in-scope; out-of-scope one logged as a gap
   [PASS] unit/dimension consistency: no unit/dimension contradictions
-  [PASS] symbolic coverage: all 25 cards solve symbolically (general formula, not just a number)
-  [PASS] glossary covers every card variable: every card variable is documented; 8 known output collisions under arbitration
+  [PASS] symbolic coverage: all 31 cards solve symbolically (general formula, not just a number)
+  [PASS] symbolic input mode: solves symbolically; T = 2*g*m1*m2/(m1 + m2), verified as an identity
+  [PASS] glossary covers every card variable: every card variable is documented; 9 known output collisions under arbitration
   [PASS] identity scoping enforced: student_id rejected on none-scope events; unregistered events rejected
 
 All checks passed.
@@ -139,11 +141,16 @@ OpenStax matched exactly.
 injectable). Event log with identity scoping enforced in code. Physics Engine mode with
 solve and tutor rendering. Unit/dimension auditing. Eight CI invariants, all green.
 
-**Post-Phase-1 additions.** Cards now stay symbolic until a final substitution, so every
-card returns a general formula alongside the number — and steady state got 43% faster.
-Formula library grew 16 -> 25 cards, closing the largest measured coverage gap
-(Vibrations and Waves: 179 benchmark problems, previously zero cards). Automated
-benchmark harness against UGPhysics with both numeric and symbolic comparison.
+**Phase 2 — grade mode and scope expansion.** Third surface built: takes a student's own
+work, locates where it diverged, and names the specific misconception (sign flip, factor of
+2, √2 escape-vs-orbital confusion) rather than just marking it wrong. Refuses to grade
+anything it can't verify — enforced in CI. Formula library grew 16 → 31 cards, closing the
+largest measured coverage gap (Vibrations and Waves) and adding thermodynamics. Quantum
+deliberately excluded; Phase 3 (RLVR) correctly not started, since its trigger hasn't fired.
+
+Cards also now stay symbolic until a final substitution, so every card returns a general
+formula alongside the number — and steady state got 43% faster. Automated benchmark harness
+against UGPhysics runs on a free-tier model at zero cost.
 
 **Open, and not papered over:**
 - Parse quality is unmeasured — the demo uses a stub LLM. Real-model accuracy needs an API key.

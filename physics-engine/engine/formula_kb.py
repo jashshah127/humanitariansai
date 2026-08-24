@@ -594,4 +594,136 @@ WAVE009 = FormulaCard(
 WAVE_CARDS = [WAVE001, WAVE002, WAVE003, WAVE004, WAVE005,
               WAVE006, WAVE007, WAVE008, WAVE009]
 
-ALL_CARDS = MECHANICS_CARDS + EM_CARDS + WAVE_CARDS
+THERMO_CARDS = []
+
+
+# ---------------------------------------------------------------- Thermodynamics
+# Phase 2 scope expansion. The brief lists "expand to thermo/quantum" -- thermo is done
+# here; quantum is deliberately not, for the reason the brief itself gives: SymPy's
+# quantum tooling is thin, so QM would lean on curated worked derivations rather than
+# symbolic solving. Building weak quantum cards to claim the scope would be worse than
+# not building them.
+
+def _th001_eqs(k):
+    P, V, n, R_gas, T = k['P'], k['V'], k['n_moles'], k['R_gas'], S('T_temp')
+    return [sp.Eq(P * V, n * R_gas * T)]
+
+
+TH001 = FormulaCard(
+    id="THERMO-IDEAL-GAS", name="Ideal gas law PV = nRT",
+    topic="Thermodynamics", subtopic="Gas Laws",
+    applicability="Ideal gas. Temperature in KELVIN, never Celsius. Pressure in pascals.",
+    required_knowns=['P', 'V', 'n_moles', 'R_gas'], solves_for=['T_temp'],
+    build_equations=_th001_eqs,
+    output_units={'T_temp': 'K'},
+    pitfalls="Using Celsius instead of Kelvin. The law is only linear in absolute "
+             "temperature, so a Celsius value gives a silently wrong answer.",
+    must_be_positive=['T_temp'],
+)
+
+
+def _th002_eqs(k):
+    m, c, dT = k['m'], k['c_specific'], k['delta_T']
+    Q = S('Q_heat')
+    return [sp.Eq(Q, m * c * dT)]
+
+
+TH002 = FormulaCard(
+    id="THERMO-SENSIBLE-HEAT", name="Sensible heat Q = mc(dT)",
+    topic="Thermodynamics", subtopic="Calorimetry",
+    applicability="Temperature change WITHOUT a phase change. If the substance melts or "
+                  "boils during the process, this alone is wrong -- latent heat applies too.",
+    required_knowns=['m', 'c_specific', 'delta_T'], solves_for=['Q_heat'],
+    build_equations=_th002_eqs,
+    output_units={'Q_heat': 'J'},
+    pitfalls="Applying it across a phase change. Temperature stays constant while ice "
+             "melts, so mc(dT) accounts for none of that energy.",
+)
+
+
+def _th003_eqs(k):
+    m, L = k['m'], k['L_latent']
+    Q = S('Q_heat')
+    return [sp.Eq(Q, m * L)]
+
+
+TH003 = FormulaCard(
+    id="THERMO-LATENT-HEAT", name="Latent heat Q = mL",
+    topic="Thermodynamics", subtopic="Calorimetry",
+    applicability="Phase change at constant temperature. Use the fusion value for "
+                  "melting/freezing and the vaporization value for boiling/condensing.",
+    required_knowns=['m', 'L_latent'], solves_for=['Q_heat'],
+    build_equations=_th003_eqs,
+    output_units={'Q_heat': 'J'},
+    pitfalls="Mixing up latent heat of fusion with vaporization -- for water they differ "
+             "by roughly a factor of seven.",
+)
+
+
+def _th004_eqs(k):
+    Th, Tc = k['T_hot'], k['T_cold']
+    eff = S('efficiency')
+    return [sp.Eq(eff, 1 - Tc / Th)]
+
+
+def _th004_verify(knowns, solved):
+    ok = 0 < solved['efficiency'] < 1
+    return ok, (f"Carnot efficiency {solved['efficiency']:.4f} must lie strictly between "
+                f"0 and 1; outside that range violates the second law")
+
+
+TH004 = FormulaCard(
+    id="THERMO-CARNOT-EFFICIENCY", name="Carnot efficiency",
+    topic="Thermodynamics", subtopic="Heat Engines",
+    applicability="Theoretical MAXIMUM efficiency between two reservoirs. Temperatures "
+                  "in KELVIN. No real engine reaches this.",
+    required_knowns=['T_hot', 'T_cold'], solves_for=['efficiency'],
+    build_equations=_th004_eqs,
+    output_units={'efficiency': 'dimensionless'},
+    pitfalls="Celsius temperatures produce an efficiency that can exceed 1 or go "
+             "negative -- physically impossible, and a sign the units are wrong.",
+    must_be_positive=['efficiency'],
+    verify_fn=_th004_verify,
+)
+
+
+def _th005_eqs(k):
+    Q, T = k['Q_heat'], k['T_temp']
+    dS = S('delta_S')
+    return [sp.Eq(dS, Q / T)]
+
+
+TH005 = FormulaCard(
+    id="THERMO-ENTROPY-ISOTHERMAL", name="Entropy change at constant temperature",
+    topic="Thermodynamics", subtopic="Entropy",
+    applicability="Reversible heat transfer at CONSTANT temperature. For a varying "
+                  "temperature the integral form is required instead.",
+    required_knowns=['Q_heat', 'T_temp'], solves_for=['delta_S'],
+    build_equations=_th005_eqs,
+    output_units={'delta_S': 'J/K'},
+    pitfalls="Using it when temperature changes during the process -- then entropy needs "
+             "integration, not division.",
+)
+
+
+def _th006_eqs(k):
+    Q, W = k['Q_heat'], k['W_work']
+    dU = S('delta_U')
+    return [sp.Eq(dU, Q - W)]
+
+
+TH006 = FormulaCard(
+    id="THERMO-FIRST-LAW", name="First law of thermodynamics",
+    topic="Thermodynamics", subtopic="Laws",
+    applicability="Sign convention: Q is heat added TO the system, W is work done BY the "
+                  "system. Other textbooks flip W, so check which convention is in use.",
+    required_knowns=['Q_heat', 'W_work'], solves_for=['delta_U'],
+    build_equations=_th006_eqs,
+    output_units={'delta_U': 'J'},
+    pitfalls="The sign convention on W. Work done BY the system versus ON the system "
+             "flips the sign, and half of textbooks use each.",
+)
+
+THERMO_CARDS = [TH001, TH002, TH003, TH004, TH005, TH006]
+
+ALL_CARDS = MECHANICS_CARDS + EM_CARDS + WAVE_CARDS + THERMO_CARDS

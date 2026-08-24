@@ -1,0 +1,17 @@
+# One-click deploy to Render's free tier.
+#   1. Push this repo to GitHub (done)
+#   2. render.com -> New -> Blueprint -> point at the repo
+#   3. Add GEMINI_API_KEY in the dashboard (free key: aistudio.google.com/apikey)
+#
+# Free tier sleeps after 15 min idle and takes ~30s to wake. Fine for a demo link;
+# not fine for anything a student depends on.
+services:
+  - type: web
+    name: physics-engine
+    runtime: python
+    rootDir: physics-engine
+    buildCommand: pip install -r requirements.txt
+    startCommand: python3 server.py
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false        # set in the dashboard, never committed

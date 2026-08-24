@@ -78,6 +78,47 @@ def symbolic_coverage():
                 f"a number)") if ok else f"no symbolic solution for: {missing}"
 
 
+def symbolic_input_mode():
+    """Problems stated in symbols rather than numbers must solve, not decline."""
+    import sympy as sp
+    from pipeline import solve_physics_problem
+    kn = dict(m1=sp.Symbol("m1"), m2=sp.Symbol("m2"), g=sp.Symbol("g"))
+    r = solve_physics_problem("s", "symbolic atwood", kn, ["a", "T"], topic_hint="Mechanics")
+    if r["route"] != "deterministic_script":
+        return False, f"symbolic problem declined (route={r['route']})"
+    if not r["solve"]["symbolic_mode"]:
+        return False, "symbolic_mode flag not set"
+    if not r["verify"]["residual_check"]["ok"]:
+        return False, "symbolic residual identity did not simplify to zero"
+    ans = r["final_answer"].get("T", "")
+    if "m1" not in str(ans) or "m2" not in str(ans):
+        return False, f"symbolic answer looks wrong: T = {ans}"
+    return True, f"solves symbolically; T = {ans}, verified as an identity"
+
+
+def grade_mode_works():
+    from grade_mode import grade, Assessment
+    kn = dict(m1=4, m2=6, g=9.8)
+    ok_case = grade("g", "atwood", kn, ["a", "T"], {"a": 1.96, "T": 47.04},
+                    topic_hint="Mechanics")
+    if ok_case.assessment != Assessment.CORRECT:
+        return False, f"correct submission graded as {ok_case.assessment}"
+
+    flip = grade("g", "atwood", kn, ["a", "T"], {"a": -1.96, "T": 47.04},
+                 topic_hint="Mechanics")
+    if flip.misconception != "sign_flip":
+        return False, f"sign-flip misconception not detected (got {flip.misconception})"
+
+    # The one that matters most: it must REFUSE to grade when it has no verified
+    # reference. Marking a student wrong against an unverified answer is the project's
+    # own failure mode pointed at someone's transcript.
+    refuse = grade("g", "damped", dict(m=0.5, k=200, c_damp=1.2),
+                   ["damped_frequency"], {"damped_frequency": 19.9})
+    if refuse.assessment != Assessment.NOT_ASSESSABLE:
+        return False, "graded a problem with no verified reference -- must refuse"
+    return True, "correct/misconception/refuse-to-grade all behave"
+
+
 def identity_scoping_enforced():
     from event_log import EventLog, ScopeViolation
     log = EventLog()
@@ -112,8 +153,11 @@ if __name__ == "__main__":
     check("end-to-end from raw text", phase1_end_to_end)
     check("unit/dimension consistency", units_consistent)
     check("symbolic coverage", symbolic_coverage)
+    check("symbolic input mode", symbolic_input_mode)
     check("glossary covers every card variable", glossary_covers_cards)
     check("identity scoping enforced", identity_scoping_enforced)
+    print("\nPhase 2 invariants")
+    check("grade mode", grade_mode_works)
 
     print()
     if failures:

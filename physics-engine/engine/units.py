@@ -32,6 +32,8 @@ _TOKENS = {
     "W": u.watt, "C": u.coulomb, "V": u.volt, "A": u.ampere, "ohm": u.ohm,
     "F": u.farad, "T": u.tesla, "Wb": u.weber, "H": u.henry, "Hz": u.hertz,
     "rad": u.radian, "deg": u.degree, "K": u.kelvin,
+    # thermodynamics
+    "Pa": u.pascal, "mol": u.mole, "L": u.liter, "atm": u.atmosphere,
 }
 
 # Units the KB uses that carry no dimension, or that are deliberately ambiguous.

@@ -173,6 +173,42 @@ GLOSSARY = {
     "v_escape":  dict(desc="escape velocity from a body's surface", unit="m/s",
                       aliases=["escape_velocity", "escape_speed", "v_esc"]),
 
+    # --- thermodynamics
+    # `T` already means tension and period in this KB, so temperature takes T_temp
+    # rather than overloading a symbol that is already carrying two meanings.
+    "T_temp":     dict(desc="absolute temperature in KELVIN, never Celsius", unit="K",
+                       aliases=["temperature", "temp", "T_kelvin", "abs_temperature"]),
+    "T_hot":      dict(desc="hot reservoir temperature in KELVIN", unit="K",
+                       aliases=["hot_temperature", "T_h", "source_temperature"]),
+    "T_cold":     dict(desc="cold reservoir temperature in KELVIN", unit="K",
+                       aliases=["cold_temperature", "T_c", "sink_temperature"]),
+    "delta_T":    dict(desc="temperature CHANGE (a difference, so Celsius and Kelvin "
+                            "intervals are numerically equal here)", unit="K",
+                       aliases=["temperature_change", "dT", "temp_change"]),
+    "P":          dict(desc="pressure", unit="Pa",
+                       aliases=["pressure", "p_pressure"]),
+    "V":          dict(desc="volume (thermo). NOTE: V also means voltage in the circuit "
+                            "cards -- read which from the problem", unit="m^3",
+                       aliases=["volume", "vol"]),
+    "n_moles":    dict(desc="amount of substance in moles", unit="dimensionless",
+                       aliases=["moles", "n_mol", "amount", "num_moles"]),
+    "R_gas":      dict(desc="universal gas constant, 8.314 J/(mol*K)", unit="J/K",
+                       aliases=["gas_constant", "R_universal", "ideal_gas_constant"]),
+    "Q_heat":     dict(desc="heat energy transferred", unit="J",
+                       aliases=["heat", "Q", "thermal_energy", "heat_energy"]),
+    "W_work":     dict(desc="work done BY the system (check the sign convention)", unit="J",
+                       aliases=["work", "W", "work_done"]),
+    "delta_U":    dict(desc="change in internal energy", unit="J",
+                       aliases=["internal_energy_change", "dU", "delta_internal_energy"]),
+    "delta_S":    dict(desc="change in entropy", unit="J/K",
+                       aliases=["entropy_change", "dS"]),
+    "c_specific": dict(desc="specific heat capacity", unit="J/K",
+                       aliases=["specific_heat", "heat_capacity", "c_heat", "specific_heat_capacity"]),
+    "L_latent":   dict(desc="latent heat (fusion for melting, vaporization for boiling)",
+                       unit="J", aliases=["latent_heat", "L_fusion", "L_vaporization", "latent"]),
+    "efficiency": dict(desc="thermal efficiency, between 0 and 1", unit="dimensionless",
+                       aliases=["eff", "thermal_efficiency", "carnot_efficiency"]),
+
     # --- electrostatics
     "q1_abs":   dict(desc="MAGNITUDE of the first charge (always positive)", unit="C",
                      aliases=["q1", "charge1", "charge_1", "q_1"]),

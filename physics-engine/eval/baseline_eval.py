@@ -38,6 +38,47 @@ Problem: {problem}
 """
 
 
+def call_gemini(problem_text, model="gemini-flash-lite-latest"):
+    """FREE option -- no credit card. Get a key at aistudio.google.com/apikey, then
+    export GEMINI_API_KEY. Paced under the free-tier rate limit."""
+    import json as _json
+    import os
+    import time
+    import urllib.request
+
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        raise RuntimeError("GEMINI_API_KEY not set. Free key at aistudio.google.com/apikey")
+
+    global _LAST_GEMINI_CALL
+    wait = 6.5 - (time.time() - _LAST_GEMINI_CALL)
+    if wait > 0:
+        time.sleep(wait)
+    _LAST_GEMINI_CALL = time.time()
+
+    url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
+           f"{model}:generateContent")
+    body = _json.dumps({
+        "contents": [{"parts": [{"text": PROMPT_TEMPLATE.format(problem=problem_text)}]}],
+        "generationConfig": {"temperature": 0},
+    }).encode()
+    req = urllib.request.Request(url, data=body, headers={
+        "Content-Type": "application/json",
+        "X-goog-api-key": key,
+    })
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return _json.loads(r.read())["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception:
+            if attempt == 3:
+                raise
+            time.sleep(2 ** attempt)
+
+
+_LAST_GEMINI_CALL = 0.0
+
+
 def call_claude(problem_text, model="claude-sonnet-4-6"):
     import anthropic
     client = anthropic.Anthropic()
@@ -116,7 +157,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True,
                          help="CSV with columns: problem_id, problem_text, expected_json")
-    parser.add_argument("--model", choices=["claude", "gpt"], default="claude")
+    parser.add_argument("--model", choices=["gemini", "claude", "gpt"], default="gemini",
+                         help="gemini = FREE tier, no credit card (default)")
     parser.add_argument("--ugphysics", action="store_true",
                          help="Input is a raw UGPhysics export -- remap columns first "
                               "(problem->problem_text, index->problem_id). NOTE: UGPhysics's "
@@ -132,7 +174,7 @@ if __name__ == "__main__":
               "'answers' field (boxed LaTeX) into expected_json. Do that conversion "
               "before running, or this will error on json.loads().", file=sys.stderr)
 
-    model_fn = call_claude if args.model == "claude" else call_gpt
+    model_fn = {"gemini": call_gemini, "claude": call_claude, "gpt": call_gpt}[args.model]
     acc, results = run_baseline(df, model_fn)
 
     print(f"\nBaseline accuracy ({args.model}, NO tool use, plain chain-of-thought): {acc:.1%}")
