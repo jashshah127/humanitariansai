@@ -15,6 +15,59 @@ from models import solution_object
 TOL = 1e-6
 
 
+class _SymbolDict(dict):
+    """Handed to a card's build_equations() in place of numeric knowns, so the card
+    returns equations in SYMBOLS rather than with values already baked in.
+
+    Every card asks for its inputs as k['m1'], k['g'] and so on. Passing this instead
+    of a value dict makes each lookup produce Symbol('m1'), Symbol('g') -- so all 16
+    cards became symbol-capable without a single line changing inside them. The cards
+    were already written generically; they just hadn't been asked for symbols before."""
+
+    def __missing__(self, key):
+        return sp.Symbol(key)
+
+
+_SYMBOLIC_CACHE = {}
+
+
+def symbolic_solution(card):
+    """Solve a card ONCE in pure symbols and cache the result.
+
+    This is what makes symbolic output affordable. Solving symbolically costs roughly
+    290ms; substituting numbers into an already-solved expression costs a fraction of a
+    millisecond. Doing the algebra once per card rather than once per problem turns a
+    26x slowdown into a one-time startup cost.
+
+    Everything expensive and problem-independent is cached here -- the solve, the
+    simplify, and the symbolic form of the equations. An earlier version simplified on
+    every call and ran 2x slower than the old numeric path; measuring that is what
+    located the cost. Caching is not an optimization detail here, it is the thing that
+    makes the feature shippable.
+
+    Returns (solutions, simplified, symbolic_form) or (None, None, symbolic_form) when
+    the card does not resolve symbolically -- in which case the caller falls back to
+    numeric solving rather than the problem failing."""
+    if card.id in _SYMBOLIC_CACHE:
+        return _SYMBOLIC_CACHE[card.id]
+    try:
+        eqs = card.build_equations(_SymbolDict())
+        symbolic_form = [f"{e.lhs} = {e.rhs}" for e in eqs]
+    except Exception:
+        symbolic_form = []
+    try:
+        syms = [sp.Symbol(n) for n in card.solves_for]
+        sols = sp.solve(card.build_equations(_SymbolDict()), syms, dict=True)
+        sols = sols or None
+        simplified = ([{str(k): sp.simplify(v) for k, v in sd.items()} for sd in sols]
+                      if sols else None)
+    except Exception:
+        sols, simplified = None, None
+    result = (sols, simplified, symbolic_form)
+    _SYMBOLIC_CACHE[card.id] = result
+    return result
+
+
 def retrieve(unknowns_wanted, knowns_available, topic_hint=None):
     """Pull candidate formula cards that can solve for at least one requested unknown.
     Deliberately does NOT check whether required knowns are actually present — that
@@ -55,27 +108,56 @@ def plan(card, knowns):
 
 
 def solve(card, knowns):
-    """Solve via SymPy only — this function never evaluates arithmetic by anything
-    other than the symbolic engine. Returns both the numeric result AND the symbolic
-    equations actually used, so the output is 'numeric and symbolic', not just a number."""
-    eqs = card.build_equations(knowns)
-    symbolic_form = [f"{eq.lhs} = {eq.rhs}" for eq in eqs]
-    unknown_syms = [sp.Symbol(name) for name in card.solves_for]
-    sols = sp.solve(eqs, unknown_syms, dict=True)
+    """Solve via SymPy only -- this function never evaluates arithmetic by anything
+    other than the symbolic engine.
+
+    Returns the numeric result AND the general symbolic result: not just v = 30.0 m/s
+    but v = v0 + a*t. That second form is what the benchmark's majority actually asks
+    for (60% of UGPhysics wants a derivation, not a number), and it is also the better
+    thing to show a student -- a hint reading `T - m1*g = m1*a` teaches the relationship,
+    while `T - 39.2 = 4*a` just leaks the arithmetic."""
+    subs_map = {sp.Symbol(n): v for n, v in knowns.items()}
+    sym_sols, simplified, symbolic_form = symbolic_solution(card)
+
+    if sym_sols is not None:
+        # Substitute into pre-solved, pre-simplified expressions -- the cheap path.
+        sols, symbolic_answers = [], []
+        for i, sd in enumerate(sym_sols):
+            try:
+                sols.append({k: v.subs(subs_map) for k, v in sd.items()})
+            except Exception:
+                continue
+            symbolic_answers.append(simplified[i] if simplified else None)
+    else:
+        # Card does not resolve symbolically; fall back to numeric solving so the
+        # problem still gets an answer rather than failing.
+        eqs = card.build_equations(knowns)
+        syms = [sp.Symbol(n) for n in card.solves_for]
+        sols = sp.solve(eqs, syms, dict=True)
+        symbolic_answers = [None] * len(sols)
 
     def is_real(d):
-        return all(sp.im(v) == 0 for v in d.values())
+        try:
+            return all(sp.im(sp.N(v)) == 0 for v in d.values())
+        except Exception:
+            return False
 
-    real_sols = [d for d in sols if is_real(d)] or sols
+    real_idx = [i for i, d in enumerate(sols) if is_real(d)] or list(range(len(sols)))
 
-    def satisfies_positivity(d):
-        return all(float(d[sp.Symbol(name)]) > 0 for name in card.must_be_positive
-                   if sp.Symbol(name) in d)
+    def satisfies_positivity(i):
+        d = sols[i]
+        try:
+            return all(float(sp.N(d[sp.Symbol(n)])) > 0 for n in card.must_be_positive
+                       if sp.Symbol(n) in d)
+        except Exception:
+            return False
 
-    chosen = next((d for d in real_sols if satisfies_positivity(d)), real_sols[0])
-    solved = {str(sym): float(val) for sym, val in chosen.items()}
+    chosen_i = next((i for i in real_idx if satisfies_positivity(i)), real_idx[0])
+    chosen = sols[chosen_i]
+    solved = {str(k): float(sp.N(v)) for k, v in chosen.items()}
+    chosen_symbolic = symbolic_answers[chosen_i]
     ambiguous = len(sols) > 1
-    return solved, ambiguous, len(sols), symbolic_form
+    return solved, ambiguous, len(sols), symbolic_form, chosen_symbolic
 
 
 def verify(card, knowns, solved):
@@ -115,11 +197,12 @@ def verify(card, knowns, solved):
 
 
 def _solve_and_verify(card, knowns):
-    solved, ambiguous, n_solutions, symbolic_form = solve(card, knowns)
+    solved, ambiguous, n_solutions, symbolic_form, symbolic_answer = solve(card, knowns)
     verify_result = verify(card, knowns, solved)
     solve_stage = {"solved_values": solved, "symbolic_form": symbolic_form,
+                   "symbolic_answer": {k: str(v) for k, v in (symbolic_answer or {}).items()},
                    "ambiguous_multiple_roots": ambiguous, "n_symbolic_solutions": n_solutions,
-                   "method": "sympy.solve"}
+                   "method": "sympy.solve (symbolic, cached; numbers substituted last)"}
     return solved, solve_stage, verify_result
 
 

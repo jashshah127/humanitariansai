@@ -135,6 +135,44 @@ GLOSSARY = {
     "r":        dict(desc="radial distance / separation / loop radius", unit="m",
                      aliases=["separation", "distance_between", "radial_distance", "loop_radius"]),
 
+    # --- vibrations & waves
+    # `k` is spring constant and `A` is loop area elsewhere in this KB, so wave number
+    # and amplitude take distinct names rather than overloading them. The collision
+    # audit is what makes that discipline checkable rather than a convention someone
+    # remembers.
+    "f":         dict(desc="frequency", unit="Hz",
+                      aliases=["frequency", "freq", "nu"]),
+    "lambda_":   dict(desc="wavelength", unit="m",
+                      aliases=["wavelength", "lambda", "wave_length"]),
+    "k_wave":    dict(desc="wave NUMBER, the coefficient of x in y=A sin(kx-wt). NOT the "
+                           "spring constant", unit="1/m",
+                      aliases=["wave_number", "wavenumber", "k_w", "angular_wavenumber"]),
+    "T_period":  dict(desc="period of oscillation or of a wave", unit="s",
+                      aliases=["period", "oscillation_period", "wave_period", "time_period"]),
+    "A_amp":     dict(desc="amplitude of an oscillation or wave. NOT loop area", unit="m",
+                      aliases=["amplitude", "peak_displacement", "A_amplitude"]),
+    "coef_sin":  dict(desc="coefficient of the sine term in a*sin(wt)+b*cos(wt)", unit="m",
+                      aliases=["sine_coefficient", "a_sin", "sin_coeff"]),
+    "coef_cos":  dict(desc="coefficient of the cosine term in a*sin(wt)+b*cos(wt)", unit="m",
+                      aliases=["cosine_coefficient", "b_cos", "cos_coeff"]),
+    "c_damp":    dict(desc="damping coefficient", unit="kg/s",
+                      aliases=["damping", "damping_coefficient", "damping_constant", "b_damp"]),
+    "f_source":  dict(desc="frequency emitted by the source (Doppler)", unit="Hz",
+                      aliases=["source_frequency", "emitted_frequency", "f_emitted"]),
+    "f_observed": dict(desc="frequency heard by the observer (Doppler)", unit="Hz",
+                       aliases=["observed_frequency", "heard_frequency", "apparent_frequency"]),
+    "v_sound":   dict(desc="speed of sound in the medium", unit="m/s",
+                      aliases=["sound_speed", "speed_of_sound", "c_sound"]),
+    "v_observer": dict(desc="observer's speed, POSITIVE when moving toward the source",
+                       unit="m/s", aliases=["observer_speed", "v_obs", "listener_speed"]),
+    "v_source":  dict(desc="source's speed, POSITIVE when moving toward the observer",
+                      unit="m/s", aliases=["source_speed", "v_src"]),
+    "n_harmonic": dict(desc="harmonic number. Open pipe: any integer. Closed pipe: ODD only",
+                       unit="dimensionless",
+                       aliases=["harmonic", "harmonic_number", "mode_number", "n"]),
+    "v_escape":  dict(desc="escape velocity from a body's surface", unit="m/s",
+                      aliases=["escape_velocity", "escape_speed", "v_esc"]),
+
     # --- electrostatics
     "q1_abs":   dict(desc="MAGNITUDE of the first charge (always positive)", unit="C",
                      aliases=["q1", "charge1", "charge_1", "q_1"]),

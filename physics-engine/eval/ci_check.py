@@ -69,6 +69,15 @@ def glossary_covers_cards():
         if ok else f"parser can't be told to emit: {a['undocumented']}"
 
 
+def symbolic_coverage():
+    from pipeline import symbolic_solution
+    from formula_kb import ALL_CARDS
+    missing = [c.id for c in ALL_CARDS if symbolic_solution(c)[0] is None]
+    ok = not missing
+    return ok, (f"all {len(ALL_CARDS)} cards solve symbolically (general formula, not just "
+                f"a number)") if ok else f"no symbolic solution for: {missing}"
+
+
 def identity_scoping_enforced():
     from event_log import EventLog, ScopeViolation
     log = EventLog()
@@ -102,6 +111,7 @@ if __name__ == "__main__":
     print("\nPhase 1 invariants")
     check("end-to-end from raw text", phase1_end_to_end)
     check("unit/dimension consistency", units_consistent)
+    check("symbolic coverage", symbolic_coverage)
     check("glossary covers every card variable", glossary_covers_cards)
     check("identity scoping enforced", identity_scoping_enforced)
 

@@ -108,6 +108,10 @@ def _hint_ladder(card, solution, parse_result):
     ]
     if card.pitfalls:
         ladder.append(f"Common mistake to avoid here: {card.pitfalls}")
+    sym = solution["solve"].get("symbolic_answer") or {}
+    if sym:
+        general = "; ".join(f"{k} = {v}" for k, v in sym.items())
+        ladder.append(f"Rearranged for what you're solving for: {general}")
     final = ", ".join(f"{k} = {v:.4g}" for k, v in solution["final_answer"].items())
     ladder.append(f"Worked result: {final}")
     return ladder

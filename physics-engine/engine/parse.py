@@ -97,6 +97,100 @@ class ClaudeLLM:
         return resp.content[0].text
 
 
+class GeminiLLM:
+    """FREE option. Google AI Studio's free tier needs no credit card and does not
+    expire: roughly 1,500 requests/day at 15 RPM on Flash models, which is ample for a
+    benchmark run of a few hundred problems.
+
+    Get a key at aistudio.google.com -> Get API key. Then:
+        export GEMINI_API_KEY=...
+
+    Uses raw REST through the standard library, deliberately: no SDK to install, and
+    no exposure to SDK version drift on someone else's machine.
+
+    Built-in pacing. The free tier allows ~15 requests/minute, so this sleeps between
+    calls rather than letting a 200-problem run die on 429s halfway through.
+
+    ONE THING TO KNOW, given this project's own data-governance thread: Google may use
+    free-tier prompts to improve their products. That is fine for UGPhysics problems,
+    which are public benchmark data. It is NOT fine for student work -- do not point
+    this provider at anything student-linked. Use a paid tier or a local model for that.
+    """
+
+    def __init__(self, model="gemini-2.5-flash", min_interval=4.2):
+        self.model = model
+        self.min_interval = min_interval   # ~14 req/min, just under the 15 RPM cap
+        self._last = 0.0
+
+    def __call__(self, prompt):
+        import json as _json
+        import os
+        import time
+        import urllib.request
+
+        key = os.environ.get("GEMINI_API_KEY")
+        if not key:
+            raise ParseError("GEMINI_API_KEY not set. Get a free key at aistudio.google.com")
+
+        wait = self.min_interval - (time.time() - self._last)
+        if wait > 0:
+            time.sleep(wait)
+        self._last = time.time()
+
+        url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
+               f"{self.model}:generateContent?key={key}")
+        body = _json.dumps({
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0},
+        }).encode()
+        req = urllib.request.Request(url, data=body,
+                                     headers={"Content-Type": "application/json"})
+        for attempt in range(4):
+            try:
+                with urllib.request.urlopen(req, timeout=60) as r:
+                    data = _json.loads(r.read())
+                return data["candidates"][0]["content"]["parts"][0]["text"]
+            except Exception as e:
+                if attempt == 3:
+                    raise ParseError(f"Gemini call failed after retries: {e}")
+                time.sleep(2 ** attempt)   # backoff on 429 / transient errors
+
+
+class OllamaLLM:
+    """FREE and fully local -- no key, no network, no data leaving the machine.
+
+        brew install ollama && ollama serve
+        ollama pull llama3.2
+
+    Slower than a hosted model, and a small local model will parse less reliably than
+    Gemini Flash. But parse is structured extraction rather than hard reasoning, so it
+    is worth trying before assuming it is inadequate -- and unlike the hosted options
+    it is the only one safe to point at student work, since nothing leaves the machine.
+    """
+
+    def __init__(self, model="llama3.2", host="http://localhost:11434"):
+        self.model = model
+        self.host = host
+
+    def __call__(self, prompt):
+        import json as _json
+        import urllib.request
+
+        body = _json.dumps({
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False,
+            "options": {"temperature": 0},
+        }).encode()
+        req = urllib.request.Request(f"{self.host}/api/generate", data=body,
+                                     headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=180) as r:
+                return _json.loads(r.read())["response"]
+        except Exception as e:
+            raise ParseError(f"Ollama call failed (is `ollama serve` running?): {e}")
+
+
 class StubLLM:
     """Offline caller for tests and CI. Looks up a canned parse by matching
     distinctive phrases in the problem text.

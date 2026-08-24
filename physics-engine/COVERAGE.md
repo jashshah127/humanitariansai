@@ -14,7 +14,7 @@ an API key. Read every number below as a ceiling.
 | Particle Dynamics | 322 | 6 | 1 : 53 |
 | Electrostatics | 184 | 3 | 1 : 61 |
 | Rigid-Body Dynamics | 180 | 1 | 1 : 180 |
-| **Vibrations and Waves** | **179** | **0** | **no cards** |
+| **Vibrations and Waves** | **179** | **8** | **1 : 22** (was zero cards) |
 | Magstatics | 148 | 3 | 1 : 49 |
 | Central Force Motion | 78 | 1 | 1 : 78 |
 | Fluid Mechanics | 77 | 0 | out of scope by decision |
@@ -23,15 +23,23 @@ an API key. Read every number below as a ceiling.
 - In a topic with at least one card: **970 / 1,226 (79%)** — upper bound
 - In a topic with zero cards: **256 / 1,226 (21%)**
 
-## The finding that changes the backlog
+## The finding that changed the backlog — now closed
 
-**Vibrations and Waves is 179 problems — the fourth largest topic — and has zero cards.**
+**Vibrations and Waves was 179 problems — the fourth largest topic — with zero cards.**
 
-SHM was explicitly locked *into* scope on Aug 3, with the stated reasoning that UGPhysics
-would "almost certainly include SHM problems, so leaving it out would create an immediate
-coverage gap against our own crosscheck source." That prediction was correct and the gap is
-now measured at 179 problems. The card was never built. It is now the single highest-value
-card to add, and that ranking comes from data rather than intuition.
+SHM was locked *into* scope on Aug 3, with the reasoning that UGPhysics would "almost
+certainly include SHM problems, so leaving it out would create an immediate coverage gap
+against our own crosscheck source." That prediction was right, and the gap measured at 179
+problems — 76 of them numerically scorable, the most of any topic.
+
+**Eight cards now cover it**, built directly against real benchmark problems: wave relation,
+wave properties from y=A sin(kx-wt), SHM spring period, amplitude combination, critical
+damping, Doppler effect, and standing waves in open and closed pipes. Escape velocity was
+added alongside, since the KB had orbital velocity only and the two are routinely confused.
+
+Each was checked against actual UGPhysics published answers — wavelength 4 cm and wave speed
+60 cm/s from a real benchmark wave equation, amplitude 0.5 from 0.4sin+0.3cos, Moon escape
+velocity 2.37 km/s. All match.
 
 **Fluid Mechanics (77) validates the opposite call.** Ruled out of scope the same day; the
 data confirms it as a genuinely separate area rather than an oversight.

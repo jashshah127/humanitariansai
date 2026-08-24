@@ -379,4 +379,219 @@ EM008 = FormulaCard(
 
 EM_CARDS = [EM001, EM002, EM003, EM004, EM005, EM006, EM007, EM008]
 
-ALL_CARDS = MECHANICS_CARDS + EM_CARDS
+WAVE_CARDS = []
+
+
+# ---------------------------------------------------------------- Vibrations & Waves
+# Added after measuring the benchmark: Vibrations and Waves is 179 UGPhysics problems,
+# 76 of them numerically scorable, and the KB had ZERO cards for it -- the single
+# largest measured gap. SHM was locked into scope on Aug 3 and never built.
+#
+# NAMING: `k` is already spring constant and `A` is already loop area elsewhere in this
+# KB, so wave number and amplitude take distinct names (k_wave, A_amp) rather than
+# overloading symbols that the collision audit would then flag. Deliberate, not stylistic.
+
+def _wave001_eqs(k):
+    f, lam = k['f'], k['lambda_']
+    v = S('v')
+    return [sp.Eq(v, f * lam)]
+
+
+WAVE001 = FormulaCard(
+    id="WAVE-BASIC-RELATION", name="Wave relation v = f*lambda",
+    topic="Mechanics", subtopic="Vibrations and Waves",
+    applicability="Any periodic travelling wave in a non-dispersive medium.",
+    required_knowns=['f', 'lambda_'], solves_for=['v'],
+    build_equations=_wave001_eqs,
+    output_units={'v': 'm/s'},
+    pitfalls="Mixing units -- wavelength in cm with speed in m/s is the usual slip.",
+    must_be_positive=['v'],
+)
+
+
+def _wave002_eqs(k):
+    kw, om = k['k_wave'], k['omega']
+    lam, f, v, T = S('lambda_'), S('f'), S('v'), S('T_period')
+    return [sp.Eq(lam, 2 * sp.pi / kw), sp.Eq(f, om / (2 * sp.pi)),
+            sp.Eq(v, om / kw), sp.Eq(T, 2 * sp.pi / om)]
+
+
+def _wave002_verify(knowns, solved):
+    check = solved['f'] * solved['lambda_']
+    ok = abs(check - solved['v']) < 1e-6 * max(1.0, abs(solved['v']))
+    return ok, f"cross-check f*lambda = {check:.6g} vs v = {solved['v']:.6g}"
+
+
+WAVE002 = FormulaCard(
+    id="WAVE-FROM-EQUATION", name="Wave properties from y = A sin(k_wave*x - omega*t)",
+    topic="Mechanics", subtopic="Vibrations and Waves",
+    applicability="Wave written in the form y = A sin(k_wave*x - omega*t); k_wave and omega "
+                  "read straight off the equation. Watch stated units (cm vs m).",
+    required_knowns=['k_wave', 'omega'], solves_for=['lambda_', 'f', 'v', 'T_period'],
+    build_equations=_wave002_eqs,
+    output_units={'lambda_': 'm', 'f': 'Hz', 'v': 'm/s', 'T_period': 's'},
+    pitfalls="Reading the coefficient of x as the wavelength -- it is the wave NUMBER; "
+             "wavelength is 2*pi divided by it.",
+    must_be_positive=['lambda_', 'f', 'v', 'T_period'],
+    verify_fn=_wave002_verify,
+)
+
+
+def _wave003_eqs(k):
+    m, ksp = k['m'], k['k']
+    T, om, f = S('T_period'), S('omega'), S('f')
+    return [sp.Eq(om, sp.sqrt(ksp / m)), sp.Eq(T, 2 * sp.pi / om), sp.Eq(f, 1 / T)]
+
+
+def _wave003_verify(knowns, solved):
+    T_check = float(2 * sp.pi * sp.sqrt(sp.Rational(1, 1) * knowns['m'] / knowns['k']))
+    ok = abs(T_check - solved['T_period']) < 1e-6 * max(1.0, abs(T_check))
+    return ok, f"period re-derived as 2*pi*sqrt(m/k) = {T_check:.6g} s vs {solved['T_period']:.6g} s"
+
+
+WAVE003 = FormulaCard(
+    id="SHM-SPRING-PERIOD", name="Simple harmonic motion: mass on a spring",
+    topic="Mechanics", subtopic="Vibrations and Waves",
+    applicability="Ideal spring, no damping, mass oscillating freely.",
+    required_knowns=['m', 'k'], solves_for=['omega', 'T_period', 'f'],
+    build_equations=_wave003_eqs,
+    output_units={'omega': 'rad/s', 'T_period': 's', 'f': 'Hz'},
+    pitfalls="Period does NOT depend on amplitude -- a frequent wrong instinct.",
+    must_be_positive=['omega', 'T_period', 'f'],
+    verify_fn=_wave003_verify,
+)
+
+
+def _wave004_eqs(k):
+    a, b = k['coef_sin'], k['coef_cos']
+    A = S('A_amp')
+    return [sp.Eq(A, sp.sqrt(a**2 + b**2))]
+
+
+WAVE004 = FormulaCard(
+    id="SHM-AMPLITUDE-COMBINE", name="Amplitude of a*sin(wt) + b*cos(wt)",
+    topic="Mechanics", subtopic="Vibrations and Waves",
+    applicability="Two SHM terms of the SAME angular frequency, one sine one cosine.",
+    required_knowns=['coef_sin', 'coef_cos'], solves_for=['A_amp'],
+    build_equations=_wave004_eqs,
+    output_units={'A_amp': 'm'},
+    pitfalls="Adding the coefficients directly. They are 90 degrees out of phase, so "
+             "they combine in quadrature, not linearly.",
+    must_be_positive=['A_amp'],
+)
+
+
+def _wave005_eqs(k):
+    m, ksp = k['m'], k['k']
+    c = S('c_damp')
+    return [sp.Eq(c, 2 * sp.sqrt(m * ksp))]
+
+
+WAVE005 = FormulaCard(
+    id="SHM-CRITICAL-DAMPING", name="Critical damping coefficient",
+    topic="Mechanics", subtopic="Vibrations and Waves",
+    applicability="Critically damped condition specifically -- the boundary case between "
+                  "underdamped oscillation and overdamped creep.",
+    required_knowns=['m', 'k'], solves_for=['c_damp'],
+    build_equations=_wave005_eqs,
+    output_units={'c_damp': 'kg/s'},
+    pitfalls="Confusing critical damping with the damped frequency; at critical damping "
+             "the system does not oscillate at all.",
+    must_be_positive=['c_damp'],
+)
+
+
+def _wave006_eqs(k):
+    f_src, v_snd = k['f_source'], k['v_sound']
+    v_o, v_s = k['v_observer'], k['v_source']
+    f_obs = S('f_observed')
+    return [sp.Eq(f_obs, f_src * (v_snd + v_o) / (v_snd - v_s))]
+
+
+WAVE006 = FormulaCard(
+    id="WAVE-DOPPLER", name="Doppler effect (source and observer along the line of sight)",
+    topic="Mechanics", subtopic="Vibrations and Waves",
+    applicability="Motion along the line joining source and observer. Sign convention: "
+                  "v_observer positive TOWARD the source, v_source positive TOWARD the "
+                  "observer. Set either to 0 when stationary.",
+    required_knowns=['f_source', 'v_sound', 'v_observer', 'v_source'],
+    solves_for=['f_observed'],
+    build_equations=_wave006_eqs,
+    output_units={'f_observed': 'Hz'},
+    pitfalls="Sign convention is the whole problem here. Approaching raises the pitch, "
+             "receding lowers it -- check the answer against that before trusting it.",
+    must_be_positive=['f_observed'],
+)
+
+
+def _wave007_eqs(k):
+    v, L, n = k['v'], k['L'], k['n_harmonic']
+    f = S('f')
+    return [sp.Eq(f, n * v / (2 * L))]
+
+
+WAVE007 = FormulaCard(
+    id="WAVE-PIPE-OPEN", name="Standing wave in an open pipe (both ends open)",
+    topic="Mechanics", subtopic="Vibrations and Waves",
+    applicability="Pipe open at BOTH ends. n = 1 is the fundamental; all harmonics present.",
+    required_knowns=['v', 'L', 'n_harmonic'], solves_for=['f'],
+    build_equations=_wave007_eqs,
+    output_units={'f': 'Hz'},
+    pitfalls="Using this for a closed pipe. A closed pipe supports only ODD harmonics "
+             "and its fundamental is v/(4L), not v/(2L).",
+    must_be_positive=['f'],
+)
+
+
+def _wave008_eqs(k):
+    v, L, n = k['v'], k['L'], k['n_harmonic']
+    f = S('f')
+    return [sp.Eq(f, n * v / (4 * L))]
+
+
+WAVE008 = FormulaCard(
+    id="WAVE-PIPE-CLOSED", name="Standing wave in a closed pipe (one end closed)",
+    topic="Mechanics", subtopic="Vibrations and Waves",
+    applicability="Pipe closed at ONE end. Only odd harmonics exist, so n must be odd "
+                  "(1, 3, 5...); n=3 is the first overtone, not the second harmonic.",
+    required_knowns=['v', 'L', 'n_harmonic'], solves_for=['f'],
+    build_equations=_wave008_eqs,
+    output_units={'f': 'Hz'},
+    pitfalls="Treating n=2 as valid. A closed pipe has no even harmonics, so 'second "
+             "overtone' means n=5 here, not n=3.",
+    must_be_positive=['f'],
+)
+
+
+def _wave009_eqs(k):
+    G_mass, R_body, G_const = k['M'], k['R'], k['G']
+    v_esc = S('v_escape')
+    return [sp.Eq(v_esc, sp.sqrt(2 * G_const * G_mass / R_body))]
+
+
+def _wave009_verify(knowns, solved):
+    import math
+    v_orbit = math.sqrt(knowns['G'] * knowns['M'] / knowns['R'])
+    ratio = solved['v_escape'] / v_orbit
+    ok = abs(ratio - math.sqrt(2)) < 1e-6
+    return ok, f"escape/orbital ratio = {ratio:.6f}, must equal sqrt(2) = 1.414214"
+
+
+WAVE009 = FormulaCard(
+    id="MECH-GRAV-ESCAPE", name="Escape velocity from a body's surface",
+    topic="Mechanics", subtopic="Gravitation",
+    applicability="Escape from the SURFACE, so R is the body's radius. Ignores atmosphere "
+                  "and the body's rotation.",
+    required_knowns=['G', 'M', 'R'], solves_for=['v_escape'],
+    build_equations=_wave009_eqs,
+    output_units={'v_escape': 'm/s'},
+    pitfalls="Confusing escape velocity with orbital velocity -- escape is larger by "
+             "exactly a factor of sqrt(2).",
+    must_be_positive=['v_escape'],
+    verify_fn=_wave009_verify,
+)
+
+WAVE_CARDS = [WAVE001, WAVE002, WAVE003, WAVE004, WAVE005,
+              WAVE006, WAVE007, WAVE008, WAVE009]
+
+ALL_CARDS = MECHANICS_CARDS + EM_CARDS + WAVE_CARDS
