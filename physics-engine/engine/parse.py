@@ -123,7 +123,7 @@ class GeminiLLM:
     this provider at anything student-linked. Use a paid tier or a local model for that.
     """
 
-    def __init__(self, model="gemini-flash-latest", min_interval=6.5):
+    def __init__(self, model="gemini-3.6-flash", min_interval=6.5):
         self.model = model
         self.min_interval = min_interval   # ~9 req/min, under the 10 RPM free-tier floor
         self._last = 0.0

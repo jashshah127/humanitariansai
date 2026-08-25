@@ -166,8 +166,7 @@ class PhysicsEngineMode:
                 verification=Verification.UNVERIFIED,
                 badge=_ROUTE_MAP["no_deterministic_path"][1],
                 needs_llm_completion=True,
-                explanation="Couldn't read this problem into a structured form, so it "
-                            "hasn't been symbolically checked.",
+                explanation=f"Parsing failed: {e}",
                 route="parse_failed",
                 latency_ms=elapsed,
             )
