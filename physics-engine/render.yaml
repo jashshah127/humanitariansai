@@ -10,6 +10,7 @@ services:
     name: physics-engine
     runtime: python
     rootDir: physics-engine
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python3 server.py
     envVars:
