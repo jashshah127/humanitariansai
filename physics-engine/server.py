@@ -7,6 +7,7 @@ a demo that does not get seen.
 
 Run:
     export GEMINI_API_KEY=...          # free key from aistudio.google.com/apikey
+    export JWT_SECRET=...              # required -- /solve and /grade are now token-gated
     python3 server.py
 
 Then open http://localhost:8000
@@ -14,11 +15,19 @@ Then open http://localhost:8000
 Deploy free (Render / Railway / Fly):
     build:  pip install -r requirements.txt
     start:  python3 server.py
-    env:    GEMINI_API_KEY, PORT
+    env:    GEMINI_API_KEY, JWT_SECRET, PORT
 
-WHAT IS AND IS NOT SAFE HERE: no authentication, and nothing is stored. That is fine --
-it is a demo surface, not a student-facing deployment. No student-identified data should
-be sent to it until Q6 (data processing agreement / IRB) is answered.
+AUTH: /solve and /grade require `Authorization: Bearer <token>`. Mint tokens offline
+with mint_token.py -- there is no token-issuing endpoint, deliberately (see auth.py).
+/health, /cards, /stats stay open: they leak nothing sensitive and gating them would
+break the ability to sanity-check a deploy without already holding a token.
+
+WHAT IS AND IS NOT SAFE HERE: nothing is stored server-side, and there is still no user
+database -- a valid token proves someone was handed one, not who they are. That is fine
+for now, but it means a leaked token is a leaked token forever within its expiry, with no
+per-user revocation. No student-identified data should be sent to this service until Q6
+(data processing agreement / IRB) is answered, regardless of auth being in place --
+auth changes who can call the endpoint, not what governance applies to what flows through it.
 """
 import json
 import os
@@ -33,6 +42,7 @@ from physics_mode import PhysicsEngineMode
 from grade_mode import grade
 from event_log import EventLog
 from formula_kb import ALL_CARDS
+from jwt_auth import verify_token, bearer_token_from_header, TokenError
 
 _log = EventLog()
 
@@ -74,6 +84,18 @@ def api_solve(body):
     return d
 
 
+def _authenticate(handler):
+    """Checks the Authorization header on `handler`. Returns nothing on success;
+    sends a 401 and returns False on failure, so callers can `if not _authenticate(self): return`."""
+    try:
+        token = bearer_token_from_header(handler.headers.get("Authorization", ""))
+        verify_token(token)
+        return True
+    except TokenError as e:
+        handler._send(401, {"error": f"unauthorized: {e}"})
+        return False
+
+
 def api_grade(body):
     parsed = parse_problem(body.get("query", ""), _llm())
     r = grade("web", body.get("query", ""), parsed["knowns"], parsed["unknowns"],
@@ -112,6 +134,9 @@ INDEX = """<!doctype html>
 <p class="sub">Every answer says whether it was symbolically verified &mdash; or admits it wasn't.</p>
 <textarea id="q" placeholder="A car starts from rest and accelerates at 2.5 m/s^2 for 12 s. Find its final speed and distance."></textarea>
 <div class="row">
+  <input id="token" type="password" placeholder="Bearer token" style="flex:1;padding:11px;font:inherit;border:1px solid var(--line);border-radius:10px">
+</div>
+<div class="row">
   <button id="go" onclick="run()">Solve</button>
   <select id="mode"><option value="solve">Answer</option><option value="tutor">Hints</option></select>
   <span class="ex" onclick="ex('Two blocks of 4 kg and 6 kg hang from a frictionless pulley. Find the acceleration and tension.')">example</span>
@@ -121,13 +146,19 @@ INDEX = """<!doctype html>
 <div id="out"></div>
 <script>
 function ex(t){document.getElementById('q').value=t}
+const tokEl=document.getElementById('token');
+tokEl.value=localStorage.getItem('physics_engine_token')||'';
+tokEl.addEventListener('change',()=>localStorage.setItem('physics_engine_token',tokEl.value));
 async function run(){
   const q=document.getElementById('q').value.trim(); if(!q)return;
+  const tok=tokEl.value.trim();
   const b=document.getElementById('go'), o=document.getElementById('out');
+  if(!tok){o.innerHTML='<div class="meta">Enter a bearer token above -- ask whoever deployed this for one.</div>';return}
   b.disabled=true; b.textContent='Solving...'; o.innerHTML='';
   try{
-    const r=await fetch('/solve',{method:'POST',headers:{'Content-Type':'application/json'},
+    const r=await fetch('/solve',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
       body:JSON.stringify({query:q,render:document.getElementById('mode').value})});
+    if(r.status===401){o.innerHTML='<div class="meta">Unauthorized -- token missing, wrong, or expired.</div>';b.disabled=false;b.textContent='Solve';return}
     const d=await r.json();
     let h=`<span class="badge ${d.verification}">${d.badge}</span>`;
     if(d.answer&&Object.keys(d.answer).length)
@@ -185,8 +216,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": "invalid JSON body"})
         try:
             if path == "/solve":
+                if not _authenticate(self):
+                    return
                 return self._send(200, api_solve(body))
             if path == "/grade":
+                if not _authenticate(self):
+                    return
                 return self._send(200, api_grade(body))
             return self._send(404, {"error": "not found"})
         except Exception as e:
@@ -212,6 +247,9 @@ def main():
     if not (os.environ.get("GEMINI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")):
         print("WARNING: no API key set. Parsing will fail unless Ollama is running.")
         print("         Free key: https://aistudio.google.com/apikey")
+    if not os.environ.get("JWT_SECRET"):
+        print("WARNING: JWT_SECRET not set. Every /solve and /grade call will 401.")
+        print("         Set it, then mint a token with: python3 mint_token.py --sub you")
     print(f"Listening on http://localhost:{port}")
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
 
