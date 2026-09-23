@@ -43,6 +43,16 @@ from grade_mode import grade
 from event_log import EventLog
 from formula_kb import ALL_CARDS
 from jwt_auth import verify_token, bearer_token_from_header, TokenError
+from rate_limit import RateLimiter
+
+# Global, not per-caller -- see rate_limit.py's docstring for why. 8/min stays under
+# GeminiLLM's own documented ~9-10 RPM free-tier floor with margin, since this limiter
+# is now the ONLY thing actually enforcing pacing: _llm() constructs a fresh GeminiLLM
+# per request (see api_solve/api_grade below), so that class's own self._last pacing
+# never persists across requests and has never been active here. Burst=8 as well --
+# no extra slack banked up, since the quota this protects is shared across everyone
+# hitting the deploy, not personal to one caller.
+_gemini_limiter = RateLimiter(rate_per_minute=8, burst=8)
 
 _log = EventLog()
 
@@ -82,6 +92,30 @@ def api_solve(body):
     d = result.to_dict()
     d.pop("trace", None)     # too large for a UI response; still in the event log
     return d
+
+
+def _rate_limited(handler):
+    """Checks the global Gemini quota limiter. Returns nothing on success; sends a
+    429 with Retry-After and returns False on failure. Placed BEFORE auth in the
+    request path (see do_POST) deliberately: an invalid token still costs nothing if
+    checked after this, but checking auth first would mean a flood of bad tokens
+    could still exhaust the limiter's budget before ever being rejected -- rate
+    limiting the shared resource matters regardless of who's asking."""
+    ok, wait = _gemini_limiter.allow()
+    if not ok:
+        handler.send_response(429)
+        handler.send_header("Content-Type", "application/json")
+        handler.send_header("Retry-After", str(int(wait) + 1))
+        handler.send_header("Access-Control-Allow-Origin", "*")
+        body = json.dumps({
+            "error": "rate limit exceeded -- protecting shared Gemini free-tier quota",
+            "retry_after_seconds": round(wait, 1),
+        }).encode()
+        handler.send_header("Content-Length", str(len(body)))
+        handler.end_headers()
+        handler.wfile.write(body)
+        return False
+    return True
 
 
 def _authenticate(handler):
@@ -159,6 +193,7 @@ async function run(){
     const r=await fetch('/solve',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
       body:JSON.stringify({query:q,render:document.getElementById('mode').value})});
     if(r.status===401){o.innerHTML='<div class="meta">Unauthorized -- token missing, wrong, or expired.</div>';b.disabled=false;b.textContent='Solve';return}
+    if(r.status===429){const rd=await r.json();o.innerHTML=`<div class="meta">Rate limited -- protecting the shared Gemini quota. Try again in ~${Math.ceil(rd.retry_after_seconds)}s.</div>`;b.disabled=false;b.textContent='Solve';return}
     const d=await r.json();
     let h=`<span class="badge ${d.verification}">${d.badge}</span>`;
     if(d.answer&&Object.keys(d.answer).length)
@@ -216,10 +251,14 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": "invalid JSON body"})
         try:
             if path == "/solve":
+                if not _rate_limited(self):
+                    return
                 if not _authenticate(self):
                     return
                 return self._send(200, api_solve(body))
             if path == "/grade":
+                if not _rate_limited(self):
+                    return
                 if not _authenticate(self):
                     return
                 return self._send(200, api_grade(body))
