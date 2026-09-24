@@ -182,10 +182,11 @@ INDEX = """<!doctype html>
 function ex(t){document.getElementById('q').value=t}
 const tokEl=document.getElementById('token');
 tokEl.value=localStorage.getItem('physics_engine_token')||'';
-tokEl.addEventListener('change',()=>localStorage.setItem('physics_engine_token',tokEl.value));
+tokEl.addEventListener('input',()=>localStorage.setItem('physics_engine_token',tokEl.value));
 async function run(){
   const q=document.getElementById('q').value.trim(); if(!q)return;
   const tok=tokEl.value.trim();
+  localStorage.setItem('physics_engine_token',tok);  // explicit save, don't rely solely on the input event
   const b=document.getElementById('go'), o=document.getElementById('out');
   if(!tok){o.innerHTML='<div class="meta">Enter a bearer token above -- ask whoever deployed this for one.</div>';return}
   b.disabled=true; b.textContent='Solving...'; o.innerHTML='';
