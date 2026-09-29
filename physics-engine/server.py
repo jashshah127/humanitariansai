@@ -17,8 +17,12 @@ Deploy free (Render / Railway / Fly):
     start:  python3 server.py
     env:    GEMINI_API_KEY, JWT_SECRET, PORT
 
+FRONTEND: if frontend/dist/ exists (built with `npm run build` in frontend/), it is
+served at / and its asset paths. If it does not exist, the inline INDEX page below is
+served instead. Node is a build-time tool only; the running server stays stdlib-only.
+
 AUTH: /solve and /grade require `Authorization: Bearer <token>`. Mint tokens offline
-with mint_token.py -- there is no token-issuing endpoint, deliberately (see auth.py).
+with mint_token.py -- there is no token-issuing endpoint, deliberately (see jwt_auth.py).
 /health, /cards, /stats stay open: they leak nothing sensitive and gating them would
 break the ability to sanity-check a deploy without already holding a token.
 
@@ -37,6 +41,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "engine"))
 
+# engine/ imports -- must come AFTER the sys.path insert above.
 from parse import GeminiLLM, ClaudeLLM, OllamaLLM, parse_problem
 from physics_mode import PhysicsEngineMode
 from grade_mode import grade
@@ -44,6 +49,7 @@ from event_log import EventLog
 from formula_kb import ALL_CARDS
 from jwt_auth import verify_token, bearer_token_from_header, TokenError
 from rate_limit import RateLimiter
+import static_files
 
 # Global, not per-caller -- see rate_limit.py's docstring for why. 8/min stays under
 # GeminiLLM's own documented ~9-10 RPM free-tier floor with margin, since this limiter
@@ -56,6 +62,8 @@ _gemini_limiter = RateLimiter(rate_per_minute=8, burst=8)
 
 _log = EventLog()
 
+API_GET = ("/health", "/cards", "/stats")
+
 
 def _llm():
     """Pick a provider from whatever credentials exist, preferring the free one."""
@@ -67,7 +75,8 @@ def _llm():
 
 
 def api_health():
-    return {"status": "ok", "cards": len(ALL_CARDS), "provider": type(_llm()).__name__}
+    return {"status": "ok", "cards": len(ALL_CARDS), "provider": type(_llm()).__name__,
+            "frontend": "react" if static_files.built() else "inline"}
 
 
 def api_cards():
@@ -95,12 +104,10 @@ def api_solve(body):
 
 
 def _rate_limited(handler):
-    """Checks the global Gemini quota limiter. Returns nothing on success; sends a
-    429 with Retry-After and returns False on failure. Placed BEFORE auth in the
-    request path (see do_POST) deliberately: an invalid token still costs nothing if
-    checked after this, but checking auth first would mean a flood of bad tokens
-    could still exhaust the limiter's budget before ever being rejected -- rate
-    limiting the shared resource matters regardless of who's asking."""
+    """Checks the global Gemini quota limiter. Returns True on success; sends a
+    429 with Retry-After and returns False on failure. Currently placed BEFORE auth
+    in the request path (see do_POST). Consequence of that order: requests with a
+    bad or missing token still spend limiter budget before being rejected."""
     ok, wait = _gemini_limiter.allow()
     if not ok:
         handler.send_response(429)
@@ -119,7 +126,7 @@ def _rate_limited(handler):
 
 
 def _authenticate(handler):
-    """Checks the Authorization header on `handler`. Returns nothing on success;
+    """Checks the Authorization header on `handler`. Returns True on success;
     sends a 401 and returns False on failure, so callers can `if not _authenticate(self): return`."""
     try:
         token = bearer_token_from_header(handler.headers.get("Authorization", ""))
@@ -138,6 +145,9 @@ def api_grade(body):
     return r.to_dict()
 
 
+# Fallback UI, served only when frontend/dist/ has not been built.
+# Delete once the React build is confirmed live on Render -- while this exists,
+# a missing build fails silently (users just see the old page).
 INDEX = """<!doctype html>
 <html><head><meta charset="utf-8"><title>Physics Engine</title>
 <style>
@@ -216,10 +226,13 @@ async function run(){
 }
 </script></body></html>"""
 
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code, payload, content_type="application/json"):
         raw = (payload if isinstance(payload, str) else json.dumps(payload, default=str))
-        data = raw.encode()
+        self._send_bytes(code, raw.encode(), content_type)
+
+    def _send_bytes(self, code, data, content_type):
         self.send_response(code)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
@@ -230,14 +243,17 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?")[0]
         try:
-            if path == "/":
-                return self._send(200, INDEX, "text/html; charset=utf-8")
             if path == "/health":
                 return self._send(200, api_health())
             if path == "/cards":
                 return self._send(200, api_cards())
             if path == "/stats":
                 return self._send(200, api_stats())
+            if path == "/" and not static_files.built():
+                return self._send(200, INDEX, "text/html; charset=utf-8")
+            hit = static_files.resolve(path)     # "/" -> dist/index.html when built
+            if hit:
+                return self._send_bytes(200, *hit)
             return self._send(404, {"error": "not found"})
         except Exception as e:
             traceback.print_exc()
@@ -283,7 +299,8 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     port = int(os.environ.get("PORT", 8000))
     provider = type(_llm()).__name__
-    print(f"Physics Engine  |  {len(ALL_CARDS)} formula cards  |  parser: {provider}")
+    ui = "React build (frontend/dist)" if static_files.built() else "inline fallback (no frontend/dist)"
+    print(f"Physics Engine  |  {len(ALL_CARDS)} formula cards  |  parser: {provider}  |  UI: {ui}")
     if not (os.environ.get("GEMINI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")):
         print("WARNING: no API key set. Parsing will fail unless Ollama is running.")
         print("         Free key: https://aistudio.google.com/apikey")
