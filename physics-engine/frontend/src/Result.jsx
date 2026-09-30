@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 // Renders one /solve response per physics_mode_api.json.
 // Invariant from the contract: nothing is ever shown under a "verified"
 // badge unless the server said verification === "verified".
@@ -12,7 +14,8 @@ export default function Result({ data }) {
   // Unknown or missing state is treated as unverified, never as verified.
   const state = STATES.includes(data.verification) ? data.verification : "unverified";
   const answer = data.answer && Object.keys(data.answer).length ? data.answer : null;
-  const sources = data.sources && Object.keys(data.sources).length ? data.sources : null;
+  // Drop variables with no source phrase, so we never show `v from "null"`.
+  const sourceList = Object.entries(data.sources || {}).filter(([, phrase]) => phrase);
 
   return (
     <article className={`result ${state}`}>
@@ -46,21 +49,16 @@ export default function Result({ data }) {
         </div>
       )}
 
-      {data.hints?.length > 0 && (
-        <div className="block">
-          <h2>Hints</h2>
-          <ol>{data.hints.map((h, i) => <li key={i}>{h}</li>)}</ol>
-        </div>
-      )}
+      {data.hints?.length > 0 && <Hints hints={data.hints} />}
 
       {data.formula_used && <p className="meta">Formula: {data.formula_used}</p>}
       {data.assumptions?.length > 0 && <p className="meta">Assumes: {data.assumptions.join("; ")}</p>}
 
-      {sources && (
+      {sourceList.length > 0 && (
         <div className="meta">
           Read from your text:
           <ul>
-            {Object.entries(sources).map(([k, phrase]) => (
+            {sourceList.map(([k, phrase]) => (
               <li key={k}><var>{k}</var> from "{phrase}"</li>
             ))}
           </ul>
@@ -72,5 +70,26 @@ export default function Result({ data }) {
         <p className="meta small">{Math.round(data.latency_ms)} ms</p>
       )}
     </article>
+  );
+}
+
+// Contract: "Ordered ladder, each rung revealing more than the last, answer last.
+// Reveal one at a time." So the first hint shows, the rest wait for a click.
+function Hints({ hints }) {
+  const [shown, setShown] = useState(1);
+  const more = shown < hints.length;
+  const nextIsLast = shown === hints.length - 1;
+
+  return (
+    <div className="block">
+      <h2>Hints</h2>
+      <ol>{hints.slice(0, shown).map((h, i) => <li key={i}>{h}</li>)}</ol>
+      {more && (
+        <button className="secondary" onClick={() => setShown(shown + 1)}>
+          {nextIsLast ? "Show the answer" : "Show next hint"}
+        </button>
+      )}
+      <p className="meta small">{shown} of {hints.length} shown</p>
+    </div>
   );
 }

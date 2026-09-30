@@ -15,6 +15,7 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [resultId, setResultId] = useState(0);
 
   function onToken(e) {
     const t = e.target.value.trim();
@@ -30,6 +31,7 @@ export default function App() {
     setResult(null);
     try {
       setResult(await solve({ query: q, render, token }));
+      setResultId((n) => n + 1);   // new key resets the hint ladder
     } catch (e) {
       setError(e);
     } finally {
@@ -84,7 +86,7 @@ export default function App() {
 
       <section aria-live="polite">
         {error && <ErrorBox error={error} />}
-        {result && <Result data={result} />}
+        {result && <Result key={resultId} data={result} />}
       </section>
     </main>
   );
