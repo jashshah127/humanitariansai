@@ -1,0 +1,829 @@
+{
+  "summary": {
+    "total": 200,
+    "comparable": 163,
+    "match": 0,
+    "mismatch": 163,
+    "not_comparable": 37,
+    "unparseable": 0,
+    "accuracy_on_comparable": 0.0,
+    "comparable_fraction": 0.815
+  },
+  "rows": [
+    {
+      "problem_id": "ClassicalMechanics-1523",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1524",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1525",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1526",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1529",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1530",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1531",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1532",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1533",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1534",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1535",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1536",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1539",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1540",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1541",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1542",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1543",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1544",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1545",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1546",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1548",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1549",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1550",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1551",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1553",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1554",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1555",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1559",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1560",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1561",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1562",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1564",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1565",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1566",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1569",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1570",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1571",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1572",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1573",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1575",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1577",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1578",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1579",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1580",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1582",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1583",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1584",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1585",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1586",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1587",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1588",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1589",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1590",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1591",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1592",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1593",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1594",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1596",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1598",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1599",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1600",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1601",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1602",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1603",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1604",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1605",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1608",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1609",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1610",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1611",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1612",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1613",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1614",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1616",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1617",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1618",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1619",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1620",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1621",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1622",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalMechanics-1623",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-2",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-3",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-6",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-7",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-9",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-11",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-12",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-13",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-14",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-15",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-16",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-17",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-18",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-19",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-20",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-21",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-22",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-23",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-24",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-26",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-27",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-28",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-30",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-31",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-32",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-33",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-34",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-35",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-36",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-37",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-38",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-39",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-40",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-41",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-44",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-45",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-46",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-47",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-48",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-49",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-50",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-51",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-52",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-54",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-55",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-56",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-58",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-59",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-60",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-61",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-62",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-63",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-65",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-67",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-68",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-69",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-71",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-72",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-73",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-74",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-76",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-77",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-78",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-79",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-80",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-81",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-82",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-83",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-84",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-85",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-86",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-87",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-88",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-90",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-91",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-93",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-94",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-97",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-99",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-101",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-102",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    },
+    {
+      "problem_id": "ClassicalElectromagnetism-103",
+      "verdict": "parse_failed",
+      "detail": "Ollama call failed (is `ollama serve` running?): HTTP Error 500: Internal Server Error"
+    }
+  ]
+}
