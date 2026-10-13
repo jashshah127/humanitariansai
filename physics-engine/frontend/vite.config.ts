@@ -5,7 +5,7 @@ import { defineConfig } from "vite";
 
 // Dev: Vite on :5173 forwards API calls to server.py on :8000, so the browser
 // sees one origin and no CORS preflight happens. Prod: server.py serves dist/.
-const api = "http://localhost:8000";
+const api = "http://127.0.0.1:8000";
 
 export default defineConfig({
   plugins: [react()],
