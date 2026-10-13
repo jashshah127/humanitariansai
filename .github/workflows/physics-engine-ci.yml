@@ -1,0 +1,85 @@
+# Save as: <repo root>/.github/workflows/physics-engine-ci.yml
+# (the repo root is the folder ABOVE physics-engine/ -- GitHub only reads
+#  workflows from the root .github/ folder)
+
+name: physics-engine CI
+
+on:
+  pull_request:
+    paths:
+      - "physics-engine/**"
+      - ".github/workflows/physics-engine-ci.yml"
+  workflow_dispatch: # lets you run it by hand from the Actions tab
+
+concurrency:
+  group: physics-engine-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  engine:
+    name: Engine invariants (ci_check.py)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: physics-engine
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: physics-engine/requirements.txt
+
+      - name: Install Python packages
+        run: pip install -r requirements.txt
+
+      # Uses StubLLM, so no API key or network is needed.
+      - name: Run ci_check.py
+        run: python eval/ci_check.py
+
+  frontend:
+    name: Frontend (types, lint, format, tests, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: physics-engine/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: physics-engine/frontend/package-lock.json
+
+      - name: Install packages
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Render does not build the frontend, so the committed dist/ is what goes live.
+      # This warns when the committed dist/ does not match the source.
+      # Non-blocking for now: a build made on Windows can differ from a Linux
+      # build because of line endings, which would make this fail every time.
+      - name: Check committed dist/ is up to date
+        continue-on-error: true
+        run: |
+          if [ -n "$(git status --porcelain -- dist)" ]; then
+            echo "::warning::frontend/dist is out of date. Run 'npm run build' and commit dist/."
+            git status --short -- dist
+            exit 1
+          fi
