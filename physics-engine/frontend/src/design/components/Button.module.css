@@ -1,0 +1,92 @@
+/* Every property the legacy global `button` rule sets is set again here,
+   so the old styles can't leak into the new component. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 1;
+  transition:
+    background-color var(--duration-fast),
+    border-color var(--duration-fast),
+    color var(--duration-fast);
+}
+
+.button[data-size="md"] {
+  min-height: 44px; /* comfortable touch target */
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-base);
+}
+
+.button[data-size="sm"] {
+  min-height: 36px;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.button[data-variant="primary"] {
+  background: var(--color-brand);
+  color: var(--color-brand-contrast);
+}
+.button[data-variant="primary"]:hover:not(:disabled) {
+  background: var(--color-brand-hover);
+}
+
+.button[data-variant="secondary"] {
+  background: var(--color-surface);
+  color: var(--color-brand);
+  border-color: var(--color-brand);
+}
+.button[data-variant="secondary"]:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+}
+
+.button[data-variant="ghost"] {
+  background: transparent;
+  color: var(--color-text);
+}
+.button[data-variant="ghost"]:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+}
+
+.button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button[aria-busy="true"] {
+  opacity: 0.85;
+  cursor: progress;
+}
+
+.spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s;
+  }
+}

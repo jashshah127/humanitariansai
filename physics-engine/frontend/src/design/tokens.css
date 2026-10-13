@@ -1,4 +1,147 @@
-/* Design tokens. Filled in during the Wk 1 design-system task.
-   Every color, size and space in the app should come from a variable here. */
+/* Design tokens — based on the Humanitarians AI site (Oct 2026).
+   Brand color and font taken from the site's CSS.
+   Every color, size and space in the app should come from a variable here.
+   Dark-mode values are provisional until checked against the site's dark theme. */
+
+/* Sized-to-match Arial, shown while Inter loads, so text doesn't jump.
+   Values copied from the Humanitarians AI site's next/font output. */
+@font-face {
+  font-family: "Inter Fallback";
+  src: local("Arial");
+  ascent-override: 90.44%;
+  descent-override: 22.52%;
+  line-gap-override: 0%;
+  size-adjust: 107.12%;
+}
+
 :root {
+  /* Brand */
+  --color-brand: #871919;
+  --color-brand-hover: #6b1313;
+  --color-brand-contrast: #ffffff; /* text on brand-colored surfaces */
+
+  /* Neutrals */
+  --color-bg: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f6f6f6;
+  --color-text: #1c1c1c; /* headings, main text */
+  --color-text-muted: #6b6b6b; /* darker than the site's #7d7d7d to pass WCAG AA */
+  --color-border: #8f8f8f; /* card and input borders (3:1 vs white) */
+  --color-border-subtle: #e3e3e3; /* dividers that don't need to stand out */
+
+  /* Verification states: tinted, so they never look like brand buttons.
+     Text-on-tint pairs all pass 4.5:1. Always pair with an icon + label. */
+  --color-verified-bg: #e8f5ec;
+  --color-verified-text: #1b6b2f;
+  --color-verified-border: #1b6b2f;
+
+  --color-review-bg: #fdf3e3;
+  --color-review-text: #8a4b00;
+  --color-review-border: #8a4b00;
+
+  --color-unverified-bg: #fdecec;
+  --color-unverified-text: #a32020;
+  --color-unverified-border: #a32020;
+
+  /* Form errors (inputs, API errors) */
+  --color-danger: #a32020;
+
+  /* Focus ring: visible on both white and the brand color */
+  --focus-ring: 0 0 0 3px #ffffff, 0 0 0 5px #1c1c1c;
+
+  /* Typography */
+  --font-sans:
+    "Inter Variable", "Inter Fallback", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+
+  --text-sm: 0.875rem; /* 14px — captions, meta */
+  --text-base: 1rem; /* 16px — app body text */
+  --text-lg: 1.125rem; /* 18px — lead text, matches the site's body */
+  --text-xl: 1.5rem; /* 24px — card titles */
+  --text-2xl: 2.25rem; /* 36px — page headings */
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.6;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 700;
+
+  /* Spacing (4px steps) */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-6: 1.5rem; /* 24px */
+  --space-8: 2rem; /* 32px */
+  --space-12: 3rem; /* 48px */
+
+  /* Shape */
+  --radius-sm: 6px; /* buttons, inputs */
+  --radius-md: 8px; /* cards */
+  --radius-full: 999px; /* badges */
+
+  /* Motion */
+  --duration-fast: 120ms;
+}
+
+/* Dark mode — PROVISIONAL. Applies when the OS is dark, unless the page
+   forces light with data-theme="light". data-theme="dark" forces dark. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-brand: #e05a5a;
+    --color-brand-hover: #f07a7a;
+    --color-brand-contrast: #1a0000;
+    --color-bg: #141414;
+    --color-surface: #1c1c1c;
+    --color-surface-muted: #242424;
+    --color-text: #f2f2f2;
+    --color-text-muted: #a8a8a8;
+    --color-border: #5a5a5a;
+    --color-border-subtle: #2e2e2e;
+    --color-verified-bg: #10291a;
+    --color-verified-text: #7fd69a;
+    --color-verified-border: #7fd69a;
+    --color-review-bg: #2e2110;
+    --color-review-text: #f0b866;
+    --color-review-border: #f0b866;
+    --color-unverified-bg: #2e1414;
+    --color-unverified-text: #f08a8a;
+    --color-unverified-border: #f08a8a;
+    --color-danger: #f08a8a;
+    --focus-ring: 0 0 0 3px #141414, 0 0 0 5px #f2f2f2;
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-brand: #e05a5a;
+  --color-brand-hover: #f07a7a;
+  --color-brand-contrast: #1a0000;
+  --color-bg: #141414;
+  --color-surface: #1c1c1c;
+  --color-surface-muted: #242424;
+  --color-text: #f2f2f2;
+  --color-text-muted: #a8a8a8;
+  --color-border: #5a5a5a;
+  --color-border-subtle: #2e2e2e;
+  --color-verified-bg: #10291a;
+  --color-verified-text: #7fd69a;
+  --color-verified-border: #7fd69a;
+  --color-review-bg: #2e2110;
+  --color-review-text: #f0b866;
+  --color-review-border: #f0b866;
+  --color-unverified-bg: #2e1414;
+  --color-unverified-text: #f08a8a;
+  --color-unverified-border: #f08a8a;
+  --color-danger: #f08a8a;
+  --focus-ring: 0 0 0 3px #141414, 0 0 0 5px #f2f2f2;
+}
+
+/* Base styles that use the tokens */
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
 }

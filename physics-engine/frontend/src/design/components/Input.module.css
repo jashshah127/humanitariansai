@@ -1,0 +1,75 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Sets every property the legacy global input/textarea rule sets. */
+.control {
+  width: 100%;
+  margin-top: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.control::placeholder {
+  color: var(--color-text-muted);
+}
+
+.control:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.control:disabled {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.control[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+
+.textarea {
+  height: auto;
+  min-height: 7.5rem;
+  resize: vertical;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}
+
+.count {
+  flex: none;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
