@@ -1,5 +1,6 @@
 import { createBrowserRouter } from "react-router";
 import LegacyApp from "./legacy/App.jsx";
+import DesignPreviewPage from "./pages/DesignPreviewPage.tsx";
 import NotFoundPage from "./pages/NotFoundPage.tsx";
 
 // The old App stays at "/" until the landing page lands in Wk 7.
@@ -9,5 +10,6 @@ import NotFoundPage from "./pages/NotFoundPage.tsx";
 export const router = createBrowserRouter([
   { path: "/", element: <LegacyApp /> },
   { path: "/app", element: <LegacyApp /> },
+  { path: "/design", element: <DesignPreviewPage /> },
   { path: "*", element: <NotFoundPage /> },
 ]);
