@@ -1,34 +1,27 @@
-import { DEFAULT_LABELS, normalizeVerification } from "./verification.ts";
+import { badgeLabel, normalizeVerification } from "./verification.ts";
 import type { VerificationState } from "./verification.ts";
 import styles from "./Badge.module.css";
 
 export interface VerificationBadgeProps {
   /** The raw `verification` value from the server. Untrusted on purpose. */
   state: string | null | undefined;
-  /** The server's `badge` text. Only used when the state is a known one. */
+  /** The server's `badge` text. Only shown if it matches the state (see badgeLabel). */
   label?: string | null;
 }
 
 /**
  * Shows whether an answer was verified. Rules from physics_mode_api.json:
  * - an unknown or missing state shows as "Unverified", never "Verified";
- * - a label that claims "Verified" is ignored unless the state really is verified;
+ * - the server's label is shown only if it starts with the state's own name;
  * - color is never the only signal: every state has its own icon and text.
  */
 export function VerificationBadge({ state, label }: VerificationBadgeProps) {
   const normalized = normalizeVerification(state);
-  const stateIsKnown = normalized === state;
-  const labelClaimsVerified = !!label && /^\s*verified\b/i.test(label);
-
-  const text =
-    stateIsKnown && label && !(labelClaimsVerified && normalized !== "verified")
-      ? label
-      : DEFAULT_LABELS[normalized];
 
   return (
     <span className={styles.badge} data-state={normalized}>
       <BadgeIcon state={normalized} />
-      <span>{text}</span>
+      <span>{badgeLabel(state, label)}</span>
     </span>
   );
 }
