@@ -1,0 +1,195 @@
+/* Tokens only. Element rules from legacy/styles.css still load globally,
+   so properties they set (width, padding, border, background...) are set again here. */
+
+.page {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-6);
+}
+
+.header {
+  margin-bottom: var(--space-8);
+}
+.title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-2xl);
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+.lead {
+  margin: 0;
+  max-width: 38rem;
+  font-size: var(--text-lg);
+  color: var(--color-text-muted);
+}
+
+/* ---- Problem input ---- */
+.form {
+  display: grid;
+  gap: var(--space-4);
+}
+.label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+}
+.textarea {
+  display: block;
+  width: 100%;
+  min-height: 8rem;
+  padding: var(--space-3) var(--space-4);
+  font: inherit;
+  line-height: var(--leading-normal);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+}
+.textarea:focus-visible,
+.tokenInput:focus-visible {
+  outline: 2px solid transparent; /* still visible in Windows high-contrast mode */
+  box-shadow: var(--focus-ring);
+}
+.textarea[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+.inputMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.overLimit {
+  color: var(--color-danger);
+  font-weight: var(--weight-medium);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+/* ---- Mode toggle: a segmented control built on real radio buttons ---- */
+.toggle {
+  display: inline-flex;
+  margin: 0;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  min-inline-size: 0;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.option {
+  position: relative;
+  padding: var(--space-2) var(--space-4);
+  border-radius: calc(var(--radius-sm) - 2px);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease-out;
+}
+.option:has(input:checked) {
+  background: var(--color-text);
+  color: var(--color-bg);
+}
+.option:has(input:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+@media (prefers-reduced-motion: reduce) {
+  .option {
+    transition: none;
+  }
+}
+
+/* ---- Examples ---- */
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.exampleButton {
+  padding: 0;
+  font: inherit;
+  font-weight: var(--weight-regular);
+  color: var(--color-brand);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+.exampleButton:hover {
+  color: var(--color-brand-hover);
+}
+.exampleButton:focus-visible {
+  outline: 2px solid transparent;
+  box-shadow: var(--focus-ring);
+}
+
+/* ---- Developer token (removed in Wk 4 when login lands) ---- */
+.token {
+  margin-top: var(--space-8);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.token summary {
+  cursor: pointer;
+}
+.tokenInput {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  font-family: var(--font-mono);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+/* ---- Errors and results ---- */
+.output {
+  margin-top: var(--space-8);
+}
+.error {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  color: var(--color-danger);
+  background: var(--color-surface);
+}
+
+@media (max-width: 32rem) {
+  .page {
+    padding: var(--space-8) var(--space-4);
+  }
+  .controls {
+    align-items: stretch;
+  }
+}
