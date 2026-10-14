@@ -1,7 +1,14 @@
-// Shared fetch wrapper. Converted from legacy/api.js; behaviour is unchanged.
+// Shared fetch wrapper. Converted from legacy/api.js, plus a request timeout.
 
 const TOKEN_KEY = "pe_token";
 const SESSION_KEY = "pe_session";
+
+/**
+ * How long to wait before giving up on one request.
+ * Long on purpose: a Render free-tier server can take close to a minute to wake up,
+ * and the engine retries the model provider a few times before falling back.
+ */
+export const REQUEST_TIMEOUT_MS = 90_000;
 
 export function loadToken(): string {
   try {
@@ -36,7 +43,7 @@ export function sessionId(): string {
   }
 }
 
-export type ApiErrorKind = "auth" | "rate" | "http" | "network";
+export type ApiErrorKind = "auth" | "rate" | "timeout" | "http" | "network";
 
 export class ApiError extends Error {
   readonly kind: ApiErrorKind;
@@ -50,40 +57,71 @@ export class ApiError extends Error {
   }
 }
 
+/** True when a request was cancelled on purpose (a newer request, or the page closing). */
+export function isAbort(e: unknown): boolean {
+  return e instanceof DOMException && e.name === "AbortError";
+}
+
 export async function postJson<T>(
   path: string,
   body: unknown,
   token: string,
   signal?: AbortSignal,
+  timeoutMs: number = REQUEST_TIMEOUT_MS,
 ): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(path, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(body),
-      signal,
-    });
-  } catch (e) {
-    if (e instanceof DOMException && e.name === "AbortError") throw e;
-    throw new ApiError("network", "Can't reach the server. Check that it's running.");
-  }
+  // One controller for both reasons to stop: the caller cancelled, or we timed out.
+  // (AbortSignal.any would be shorter but is missing from older Safari.)
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  const onCallerAbort = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  signal?.addEventListener("abort", onCallerAbort);
 
-  if (res.status === 401) {
-    throw new ApiError(
-      "auth",
-      "Your access token is missing, expired, or wrong. Paste a fresh one from mint_token.py.",
-    );
+  try {
+    let res: Response;
+    try {
+      res = await fetch(path, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (e) {
+      if (timedOut) {
+        throw new ApiError("timeout", "The engine took too long to answer. Try again in a minute.");
+      }
+      if (isAbort(e)) throw e;
+      throw new ApiError("network", "Can't reach the server. Check your connection and try again.");
+    }
+
+    if (res.status === 401) {
+      throw new ApiError(
+        "auth",
+        "Your access token is missing, expired, or wrong. Paste a fresh one from mint_token.py.",
+      );
+    }
+    if (res.status === 429) {
+      const wait = Number(res.headers.get("Retry-After")) || null;
+      throw new ApiError("rate", "Too many requests right now.", wait);
+    }
+    if (!res.ok) {
+      throw new ApiError("http", `Something went wrong on the server (error ${res.status}).`);
+    }
+
+    try {
+      return (await res.json()) as T;
+    } catch {
+      throw new ApiError("http", "The server sent a reply this page couldn't read.");
+    }
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", onCallerAbort);
   }
-  if (res.status === 429) {
-    const wait = Number(res.headers.get("Retry-After")) || null;
-    throw new ApiError("rate", "Too many requests right now.", wait);
-  }
-  if (!res.ok) {
-    throw new ApiError("http", `The server returned an error (${res.status}).`);
-  }
-  return (await res.json()) as T;
 }

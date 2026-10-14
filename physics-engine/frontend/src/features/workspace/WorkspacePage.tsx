@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { ApiError, loadToken, saveToken } from "../../api/client.ts";
+import { ApiError, isAbort, loadToken, saveToken } from "../../api/client.ts";
 import { solve } from "../../api/solve.ts";
 import type { RenderMode, SolveResponse } from "../../api/types.ts";
 import { Button } from "../../design/components/Button.tsx";
@@ -12,6 +12,9 @@ import { ModeToggle } from "./ModeToggle.tsx";
 import { ProblemInput } from "./ProblemInput.tsx";
 import styles from "./workspace.module.css";
 
+/** After this long, tell the student the wait is normal (cold start, provider retries). */
+const SLOW_AFTER_MS = 8_000;
+
 export default function WorkspacePage() {
   const [params, setParams] = useSearchParams();
   const mode = parseMode(params.get("mode"));
@@ -21,14 +24,26 @@ export default function WorkspacePage() {
   const [result, setResult] = useState<SolveResponse | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [loading, setLoading] = useState(false);
+  const [slow, setSlow] = useState(false);
   // A new key per result resets the hint ladder; otherwise a new problem
-  // would open with the old problem's hint count.
+  // would open with the old problem's hint count. The error key restarts
+  // the rate-limit countdown when the same kind of error comes back.
   const [resultId, setResultId] = useState(0);
+  const [errorId, setErrorId] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
   // Read once: if <details open> followed `token`, it would snap shut on the first keystroke.
   const [tokenOpenAtStart] = useState(() => !loadToken());
 
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  useEffect(() => {
+    if (!loading) {
+      setSlow(false);
+      return;
+    }
+    const t = setTimeout(() => setSlow(true), SLOW_AFTER_MS);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   const trimmed = query.trim();
   const canSubmit = !!trimmed && trimmed.length <= MAX_CHARS && !loading;
@@ -65,11 +80,12 @@ export default function WorkspacePage() {
       setResult(data);
       setResultId((n) => n + 1);
     } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return;
+      if (isAbort(e)) return;
       setResult(null);
       setError(
         e instanceof ApiError ? e : new ApiError("network", "Something went wrong. Try again."),
       );
+      setErrorId((n) => n + 1);
     } finally {
       if (abortRef.current === controller) setLoading(false);
     }
@@ -104,7 +120,14 @@ export default function WorkspacePage() {
       </form>
 
       <section className={styles.output} aria-live="polite">
-        {error && <ErrorState error={error} />}
+        {loading && (
+          <p className={styles.status}>
+            {slow
+              ? "Still working. The server may be starting up, which can take up to a minute."
+              : "Working on it…"}
+          </p>
+        )}
+        {error && <ErrorState key={errorId} error={error} onRetry={() => void submit()} />}
         {result && <ResultPanel key={resultId} data={result} busy={loading} />}
       </section>
 
