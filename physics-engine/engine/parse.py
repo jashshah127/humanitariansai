@@ -83,24 +83,35 @@ class ParseError(Exception):
 class ClaudeLLM:
     """Production caller. Needs ANTHROPIC_API_KEY in the environment.
 
-    temperature=0 is deliberate, not cosmetic: parse is the one stage where model
-    sampling could make the same problem produce different outputs, which is the exact
-    instability the V2 routing work exists to eliminate. The solver downstream cannot
-    vary; this makes the stage above it vary as little as the API allows."""
+    Parse is the one stage where model sampling could make the same problem produce
+    different outputs, which is the exact instability the V2 routing work exists to
+    eliminate. The solver downstream cannot vary. Older models were called with
+    temperature=0 to keep this stage as stable as possible, but Haiku 5.5 and newer
+    Claude models don't accept temperature or a seed, so this stage CAN vary between
+    runs on the same problem. Measure it with a repeat benchmark run before relying on
+    Claude for anything that must be reproducible. Thinking is turned off: parsing
+    doesn't need it, and it would add cost, delay, and risk cutting off the JSON reply."""
 
-    def __init__(self, model="claude-sonnet-4-6"):
+    def __init__(self, model="claude-haiku-5-5"):
         self.model = model
 
     def __call__(self, prompt):
         import anthropic
-        client = anthropic.Anthropic()
-        resp = client.messages.create(
-            model=self.model,
-            max_tokens=1024,
-            temperature=0,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return resp.content[0].text
+        try:
+            resp = anthropic.Anthropic().messages.create(
+                model=self.model,
+                max_tokens=1024,
+                thinking={"type": "disabled"},
+                messages=[{"role": "user", "content": prompt}],
+            )
+            # The reply can hold several blocks (thinking, text). Keep only the text.
+            text = "".join(b.text for b in resp.content if b.type == "text")
+        except Exception as e:
+            raise ParseError(f"Claude call failed: {e}")
+        if not text:
+            raise ParseError(f"Claude returned no text (stop_reason={resp.stop_reason})")
+        return text
+
 
 
 class GeminiLLM:
@@ -208,6 +219,22 @@ class OllamaLLM:
         except Exception as e:
             raise ParseError(f"Ollama call failed (is `ollama serve` running?): {e}")
 
+class FallbackLLM:
+    """Tries each caller in order. Moves on only when a call itself fails
+    (ParseError). A bad JSON reply is checked later, in parse_problem, and does
+    NOT trigger a fallback."""
+
+    def __init__(self, *llms):
+        self.llms = llms
+
+    def __call__(self, prompt):
+        errors = []
+        for llm in self.llms:
+            try:
+                return llm(prompt)
+            except ParseError as e:
+                errors.append(f"{type(llm).__name__}: {e}")
+        raise ParseError("all providers failed -- " + " | ".join(errors))
 
 class StubLLM:
     """Offline caller for tests and CI. Looks up a canned parse by matching

@@ -1,0 +1,157 @@
+/* Shared styles for the result feature. Tokens only -- no raw colors or sizes.
+   Element-level rules from legacy/styles.css still load globally until "/" moves
+   off the old app, so every property they set is set again here on purpose. */
+
+.result {
+  transition: opacity var(--duration-fast) ease-out;
+}
+.result[aria-busy="true"] {
+  opacity: 0.5;
+}
+@media (prefers-reduced-motion: reduce) {
+  .result {
+    transition: none;
+  }
+}
+
+.notice {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--color-unverified-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+/* The answer is the one large thing on the page. */
+.answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-8);
+  margin: var(--space-6) 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-xl);
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+.answers li {
+  margin: 0;
+}
+.value {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.varName {
+  font-style: italic;
+  font-weight: var(--weight-medium);
+}
+
+.section {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.heading {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-base);
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+
+.lead {
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Candidates: not a sequence, so no numbers. */
+.candidates {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.candidate {
+  margin: 0;
+  padding: var(--space-3) 0;
+}
+.candidate + .candidate {
+  border-top: 1px solid var(--color-border-subtle);
+}
+.principle {
+  display: block;
+  font-weight: var(--weight-bold);
+}
+.candidateMeta {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Hints ARE a sequence, so they keep their numbers. */
+.hints {
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-6);
+}
+.hints li {
+  margin: 0 0 var(--space-2);
+  padding-left: var(--space-1);
+}
+.counter {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.facts {
+  margin: 0;
+}
+.facts dt {
+  font-weight: var(--weight-medium);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.facts dd {
+  margin: 0 0 var(--space-3);
+}
+.plainList {
+  margin: 0;
+  padding-left: var(--space-6);
+}
+.plainList li {
+  margin: 0 0 var(--space-1);
+}
+
+.explanation {
+  margin: var(--space-6) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  max-width: 65ch;
+}
+
+.debug {
+  margin: var(--space-3) 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* KaTeX. Its own stylesheet sets fonts and sizes; these only handle layout. */
+.mathInline {
+  font-size: 1em;
+}
+.mathBlock {
+  display: block;
+  margin: 0 0 var(--space-2);
+  overflow-x: auto; /* long formulas scroll inside, the page never does */
+  overflow-y: hidden;
+  padding-block: var(--space-1);
+}
+.mathBlock :global(.katex-display) {
+  margin: 0;
+  text-align: left;
+}

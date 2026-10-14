@@ -2,7 +2,13 @@ __pycache__/
 *.pyc
 .env
 .venv/
+./idea
 .DS_Store
+node_modules/
+benchmark_*.json
+seed_run*.json
+seeded_*.json
+eval/benchmark_*.json
 
 # API keys -- never commit
 *_api_key*

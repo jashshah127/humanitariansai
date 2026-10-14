@@ -87,6 +87,12 @@ class PhysicsModeResponse:
     def to_dict(self):
         return asdict(self)
 
+def _fmt(v, spec):
+    """Format a number with spec; show symbols and expressions as-is."""
+    try:
+        return format(v, spec)
+    except (TypeError, ValueError):
+        return str(v)
 
 def _hint_ladder(card, solution, parse_result):
     """Progressive hints for tutor rendering, derived entirely from the plan object --
@@ -96,7 +102,7 @@ def _hint_ladder(card, solution, parse_result):
 
     Deliberately ordered so each rung reveals strictly less than the next, and the
     answer is last."""
-    knowns = ", ".join(f"{k} = {v:g}" for k, v in parse_result["knowns"].items()
+    knowns = ", ".join(f"{k} = {_fmt(v, 'g')}" for k, v in parse_result["knowns"].items()
                        if k not in parse_result.get("injected", {}))
     unknowns = ", ".join(parse_result["unknowns"])
     ladder = [
@@ -112,7 +118,7 @@ def _hint_ladder(card, solution, parse_result):
     if sym:
         general = "; ".join(f"{k} = {v}" for k, v in sym.items())
         ladder.append(f"Rearranged for what you're solving for: {general}")
-    final = ", ".join(f"{k} = {v:.4g}" for k, v in solution["final_answer"].items())
+    final = ", ".join(f"{k} = {_fmt(v, '.4g')}" for k, v in solution["final_answer"].items())
     ladder.append(f"Worked result: {final}")
     return ladder
 
