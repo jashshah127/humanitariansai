@@ -42,7 +42,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "engine"))
 
 # engine/ imports -- must come AFTER the sys.path insert above.
-from parse import GeminiLLM, ClaudeLLM, OllamaLLM, parse_problem
+from parse import GeminiLLM, ClaudeLLM, OllamaLLM, FallbackLLM, parse_problem
 from physics_mode import PhysicsEngineMode
 from grade_mode import grade
 from event_log import EventLog
@@ -66,12 +66,16 @@ API_GET = ("/health", "/cards", "/stats")
 
 
 def _llm():
-    """Pick a provider from whatever credentials exist, preferring the free one."""
+    """Use every provider that has a key, in order: Gemini, then Claude.
+    Falls back to the next one if a call fails. Ollama only if no keys are set."""
+    chain = []
     if os.environ.get("GEMINI_API_KEY"):
-        return GeminiLLM()
+        chain.append(GeminiLLM())
     if os.environ.get("ANTHROPIC_API_KEY"):
-        return ClaudeLLM()
-    return OllamaLLM()
+        chain.append(ClaudeLLM())
+    if not chain:
+        return OllamaLLM()
+    return chain[0] if len(chain) == 1 else FallbackLLM(*chain)
 
 
 def api_health():
