@@ -21,7 +21,7 @@ FRONTEND: if frontend/dist/ exists (built with `npm run build` in frontend/), it
 served at / and its asset paths. If it does not exist, the inline INDEX page below is
 served instead. Node is a build-time tool only; the running server stays stdlib-only.
 
-AUTH: /solve and /grade require `Authorization: Bearer <token>`. Mint tokens offline
+AUTH: /solve, /parse and /grade require `Authorization: Bearer <token>`. Mint tokens offline
 with mint_token.py -- there is no token-issuing endpoint, deliberately (see jwt_auth.py).
 /health, /cards, /stats stay open: they leak nothing sensitive and gating them would
 break the ability to sanity-check a deploy without already holding a token.
@@ -34,6 +34,7 @@ per-user revocation. No student-identified data should be sent to this service u
 auth changes who can call the endpoint, not what governance applies to what flows through it.
 """
 import json
+import math
 import os
 import sys
 import traceback
@@ -44,7 +45,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "eng
 # engine/ imports -- must come AFTER the sys.path insert above.
 from parse import GeminiLLM, ClaudeLLM, OllamaLLM, FallbackLLM, parse_problem
 from physics_mode import PhysicsEngineMode
+from pipeline import solve_physics_problem
 from grade_mode import grade
+from variable_glossary import GLOSSARY
 from event_log import EventLog
 from formula_kb import ALL_CARDS
 from jwt_auth import verify_token, bearer_token_from_header, TokenError
@@ -141,12 +144,144 @@ def _authenticate(handler):
         return False
 
 
+class BadRequest(Exception):
+    """The request body is wrong. Sent back as a 400 with this message."""
+
+
+# Student-facing names for the few glossary entries whose description covers two
+# different quantities. Keyed by the matched card's unit, which says which one it is.
+_AMBIGUOUS_LABELS = {
+    "T": {"N": "tension in the string", "s": "period"},
+}
+
+_NOT_GRADABLE = {
+    "no_card": "This problem isn't covered by the verified formula library yet, so it "
+               "can't be graded automatically.",
+    "ambiguous": "More than one physics principle fits this problem, so there is no single "
+                 "verified answer to grade against.",
+    "unverified": "The engine solved this problem but couldn't verify its own answer, so "
+                  "it won't grade against it.",
+    "symbolic": "This problem is written with symbols, not numbers, so its answer is a "
+                "formula. Only numeric answers can be graded for now.",
+    "no_unknowns": "The engine couldn't tell what this problem asks you to find.",
+}
+
+
+# Units for the constants the parser injects (they are not in GLOSSARY).
+_CONSTANT_UNITS = {"g": "m/s^2", "G": "N m^2/kg^2", "k_e": "N m^2/C^2", "epsilon_0": "F/m",
+                   "mu_0": "H/m", "e_charge": "C", "m_proton": "kg", "m_electron": "kg"}
+
+
+def _unit_of(name):
+    return (GLOSSARY.get(name) or {}).get("unit") or _CONSTANT_UNITS.get(name, "")
+
+
+def _label(name, unit):
+    by_unit = _AMBIGUOUS_LABELS.get(name)
+    if by_unit and unit in by_unit:
+        return by_unit[unit]
+    entry = GLOSSARY.get(name)
+    return entry["desc"] if entry else name
+
+
+def _is_number(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
+def api_parse(body):
+    """Grade mode, step 1: read the problem and say what the student must answer.
+
+    Runs the same deterministic solve grading will run, so the UI can say "this can't
+    be graded" BEFORE the student does the work. Returns names, labels and units for
+    the asked-for quantities -- never the answer. `parsed` is handed back to /grade so
+    the problem is parsed once: a second parse can name a quantity differently and make
+    the student's answer miss (parses vary between runs; see the benchmark notes).
+    """
+    query = body.get("query", "")
+    parsed = parse_problem(query, _llm())
+    solution = solve_physics_problem("web", query, parsed["knowns"], parsed["unknowns"],
+                                     topic_hint=parsed.get("topic_hint"))
+
+    def no(reason):
+        return {"gradable": False, "reason": _NOT_GRADABLE[reason],
+                "unknowns": [], "given": [], "parsed": None}
+
+    if solution["route"] == "ambiguous_multiple_deterministic_paths":
+        return no("ambiguous")
+    if solution["route"] != "deterministic_script":
+        return no("no_card")
+    if solution["status"] != "solved":
+        return no("unverified")
+    if not all(_is_number(v) for v in parsed["knowns"].values()):
+        return no("symbolic")
+
+    card = next(c for c in ALL_CARDS if c.id == solution["retrieve"]["matched"])
+    asked = [u for u in parsed["unknowns"] if u in solution["final_answer"]]
+    if not asked:
+        return no("no_unknowns")
+
+    injected = parsed.get("injected") or {}
+    return {
+        "gradable": True,
+        "reason": None,
+        "unknowns": [{"name": u, "label": _label(u, card.output_units.get(u, "")),
+                      "unit": card.output_units.get(u, "")} for u in asked],
+        # Shown so the student can catch a misread problem before grading. Injected
+        # constants the matched card doesn't use (G on a pulley problem) are left out:
+        # they would only confuse. `parsed` below still carries every known.
+        "given": [{"name": k, "value": v, "unit": _unit_of(k), "added": k in injected}
+                  for k, v in parsed["knowns"].items()
+                  if k not in injected or k in card.required_knowns],
+        "parsed": {"knowns": parsed["knowns"], "unknowns": asked,
+                   "topic_hint": parsed.get("topic_hint")},
+    }
+
+
+def _read_grade_body(body):
+    """Checks a /grade body. Returns (parsed_or_None, student_answer). Raises BadRequest."""
+    answer = body.get("student_answer")
+    if not isinstance(answer, dict) or not answer:
+        raise BadRequest("student_answer must be a non-empty object of name -> number")
+    for k, v in answer.items():
+        if not _is_number(v):
+            raise BadRequest(f"student_answer[{k!r}] must be a number")
+
+    parsed = body.get("parsed")
+    if parsed is None:
+        return None, answer
+    if not isinstance(parsed, dict):
+        raise BadRequest("parsed must be the object /parse returned")
+    knowns, unknowns = parsed.get("knowns"), parsed.get("unknowns")
+    if not isinstance(knowns, dict) or not all(_is_number(v) for v in knowns.values()):
+        raise BadRequest("parsed.knowns must be an object of name -> number")
+    if not isinstance(unknowns, list) or not unknowns or \
+            not all(isinstance(u, str) for u in unknowns):
+        raise BadRequest("parsed.unknowns must be a non-empty list of names")
+    topic = parsed.get("topic_hint")
+    if topic is not None and not isinstance(topic, str):
+        raise BadRequest("parsed.topic_hint must be a string or null")
+    return {"knowns": knowns, "unknowns": unknowns, "topic_hint": topic}, answer
+
+
 def api_grade(body):
-    parsed = parse_problem(body.get("query", ""), _llm())
-    r = grade("web", body.get("query", ""), parsed["knowns"], parsed["unknowns"],
-              body.get("student_answer", {}), body.get("student_steps"),
-              parsed.get("topic_hint"))
+    """With `parsed` (from /parse): no model call. Without it: parses the query itself,
+    as before, so callers that only send query + student_answer keep working.
+
+    Trust note: `parsed` comes from the browser, so a student could edit the knowns and
+    be graded against a different problem. Harmless while nothing is stored; must be
+    revisited (e.g. sign the parse) before grades are saved anywhere (Q6)."""
+    parsed, answer = _read_grade_body(body)
+    query = body.get("query", "")
+    if parsed is None:
+        parsed = parse_problem(query, _llm())
+    r = grade("web", query, parsed["knowns"], parsed["unknowns"],
+              answer, None, parsed.get("topic_hint"))
     return r.to_dict()
+
+
+# What a student sees when something breaks. Details stay in the server log.
+_ENGINE_ERROR = ("The engine couldn't finish this problem. This is usually temporary; "
+                 "try again in a minute.")
 
 
 # Fallback UI, served only when frontend/dist/ has not been built.
@@ -277,22 +412,38 @@ class Handler(BaseHTTPRequestHandler):
                 if not _authenticate(self):
                     return
                 return self._send(200, api_solve(body))
-            if path == "/grade":
+            if path == "/parse":
                 if not _rate_limited(self):
+                    return
+                if not _authenticate(self):
+                    return
+                return self._send(200, api_parse(body))
+            if path == "/grade":
+                # Only a /grade that has to parse spends model quota, so only that one
+                # goes through the limiter. Auth applies either way.
+                if body.get("parsed") is None and not _rate_limited(self):
                     return
                 if not _authenticate(self):
                     return
                 return self._send(200, api_grade(body))
             return self._send(404, {"error": "not found"})
-        except Exception as e:
+        except BadRequest as e:
+            return self._send(400, {"error": str(e)})
+        except Exception:
             traceback.print_exc()
-            # Fail as an honest unverified answer rather than a stack trace, so a
-            # provider outage degrades the same way an uncovered problem does.
+            if path in ("/parse", "/grade"):
+                # A grade-shaped body with a bogus assessment would be worse than an
+                # honest error the UI can offer a retry for.
+                return self._send(503, {"error": _ENGINE_ERROR})
+            # /solve: fail as an honest unverified answer rather than a stack trace, so
+            # a provider outage degrades the same way an uncovered problem does. The
+            # exception text is NOT sent: it can hold provider details (e.g. a Gemini
+            # 503 body) that mean nothing to a student.
             return self._send(200, {
                 "verification": "unverified",
                 "badge": "Unverified - engine error",
                 "needs_llm_completion": True,
-                "explanation": f"Could not process this problem: {e}",
+                "explanation": _ENGINE_ERROR,
                 "route": "error", "latency_ms": 0,
             })
 
@@ -309,7 +460,7 @@ def main():
         print("WARNING: no API key set. Parsing will fail unless Ollama is running.")
         print("         Free key: https://aistudio.google.com/apikey")
     if not os.environ.get("JWT_SECRET"):
-        print("WARNING: JWT_SECRET not set. Every /solve and /grade call will 401.")
+        print("WARNING: JWT_SECRET not set. Every /solve, /parse and /grade call will 401.")
         print("         Set it, then mint a token with: python3 mint_token.py --sub you")
     print(f"Listening on http://localhost:{port}")
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()

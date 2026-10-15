@@ -119,6 +119,56 @@ def grade_mode_works():
     return True, "correct/misconception/refuse-to-grade all behave"
 
 
+def grade_feedback_safe():
+    """Grade feedback must never contain the correct value (the UI decides when the
+    student sees it), a partial answer must not be graded "correct", and only the
+    asked-for quantities count."""
+    from grade_mode import grade, Assessment
+    kn = dict(m1=4, m2=6, g=9.8)
+    wrong = grade("g", "atwood", kn, ["a", "T"], {"a": 3.0, "T": 47.04},
+                  topic_hint="Mechanics")
+    if wrong.assessment != Assessment.WRONG_VALUE:
+        return False, f"wrong value graded as {wrong.assessment}"
+    if "1.96" in wrong.feedback or "47.0" in wrong.feedback:
+        return False, f"feedback reveals the answer: {wrong.feedback!r}"
+    partial = grade("g", "atwood", kn, ["a", "T"], {"a": 1.96}, topic_hint="Mechanics")
+    if partial.assessment != Assessment.INCOMPLETE or partial.missing != ["T"]:
+        return False, f"partial answer graded as {partial.assessment}, missing={partial.missing}"
+    only_a = grade("g", "atwood", kn, ["a"], {"a": 1.96}, topic_hint="Mechanics")
+    if only_a.assessment != Assessment.CORRECT or set(only_a.reference_answer) != {"a"}:
+        return False, "a quantity that wasn't asked for was required or revealed"
+    if only_a.verification != "verified" or wrong.verification != "verified":
+        return False, "a graded result is missing its verified badge"
+    return True, "no answer in feedback; partial = incomplete; only asked quantities graded"
+
+
+def grade_api_parses_once():
+    """/parse then /grade must cost ONE model call and /parse must not leak the answer."""
+    import json
+    sys.path.insert(0, os.path.join(HERE, ".."))
+    import server
+    from parse import StubLLM
+    stub = StubLLM({"pulley": {"knowns": {"m1": 4, "m2": 6}, "unknowns": ["a", "T"],
+                               "topic_hint": "Mechanics", "sources": {}}})
+    real_llm, server._llm = server._llm, (lambda: stub)
+    try:
+        q = "Two blocks of 4 kg and 6 kg hang from a frictionless pulley."
+        setup = server.api_parse({"query": q})
+        if not setup["gradable"]:
+            return False, f"Atwood problem reported as not gradable: {setup['reason']}"
+        if "1.96" in json.dumps(setup) or "47.0" in json.dumps(setup):
+            return False, "/parse response contains the answer"
+        result = server.api_grade({"query": q, "parsed": setup["parsed"],
+                                   "student_answer": {"a": 1.96, "T": 47.04}})
+    finally:
+        server._llm = real_llm
+    if result["assessment"] != "correct":
+        return False, f"round trip graded as {result['assessment']}"
+    if len(stub.calls) != 1:
+        return False, f"{len(stub.calls)} model calls for one parse + grade (want 1)"
+    return True, "/parse -> /grade uses one model call and never sends the answer early"
+
+
 def identity_scoping_enforced():
     from event_log import EventLog, ScopeViolation
     log = EventLog()
@@ -158,6 +208,8 @@ if __name__ == "__main__":
     check("identity scoping enforced", identity_scoping_enforced)
     print("\nPhase 2 invariants")
     check("grade mode", grade_mode_works)
+    check("grade feedback hides the answer", grade_feedback_safe)
+    check("grade API parses once", grade_api_parses_once)
 
     print()
     if failures:

@@ -49,7 +49,14 @@ class Assessment:
     CORRECT = "correct"
     WRONG_VALUE = "wrong_value"
     WRONG_METHOD = "wrong_method"          # matched a known misconception
+    INCOMPLETE = "incomplete"              # every value given is right, but some are missing
     NOT_ASSESSABLE = "not_assessable"      # engine couldn't verify a reference
+
+
+# The badge rule from physics_mode_api.json, applied to grading: "verified" only when the
+# grade was made against a symbolically verified reference. not_assessable never is.
+_GRADED = {Assessment.CORRECT, Assessment.WRONG_VALUE, Assessment.WRONG_METHOD,
+           Assessment.INCOMPLETE}
 
 
 @dataclass
@@ -62,6 +69,17 @@ class GradeResult:
     misconception: Optional[str] = None
     feedback: str = ""
     confidence: str = ""
+    missing: list = field(default_factory=list)   # asked-for quantities the student left out
+    verification: str = ""
+    badge: str = ""
+
+    def __post_init__(self):
+        if self.assessment in _GRADED:
+            self.verification = "verified"
+            self.badge = "Verified - graded against a symbolically checked answer"
+        else:
+            self.verification = "unverified"
+            self.badge = "Unverified - not graded"
 
     def to_dict(self):
         return asdict(self)
@@ -171,7 +189,9 @@ def grade(problem_id, raw_problem, knowns, unknowns, student_answer,
     # wrong against an unverified reference is worse than declining to grade at all --
     # it is the same confidently-wrong failure this project exists to prevent, aimed
     # at someone's transcript.
-    if solution["route"] != "deterministic_script":
+    # route alone is not enough: a card can close and still fail its own verification
+    # ("solved -- flagged for review"). Grading against that would break the same rule.
+    if solution["route"] != "deterministic_script" or solution["status"] != "solved":
         return GradeResult(
             assessment=Assessment.NOT_ASSESSABLE,
             feedback=("No verified reference solution exists for this problem, so it "
@@ -180,7 +200,11 @@ def grade(problem_id, raw_problem, knowns, unknowns, student_answer,
         )
 
     card = _CARDS_BY_ID[solution["retrieve"]["matched"]]
-    reference = solution["final_answer"]
+    # The card solves for everything it can (an orbit card returns r, v and T), but the
+    # student was only asked for `unknowns`. Grade, report and reveal only those, or a
+    # student who answered the one question asked gets told they left two out.
+    asked = [u for u in unknowns if u in solution["final_answer"]] or list(solution["final_answer"])
+    reference = {k: solution["final_answer"][k] for k in asked}
     symbolic = solution["solve"].get("symbolic_answer") or {}
 
     # If the reference came back as a formula rather than a number, the problem was
@@ -192,16 +216,17 @@ def grade(problem_id, raw_problem, knowns, unknowns, student_answer,
             assessment=Assessment.NOT_ASSESSABLE,
             reference_answer=reference,
             reference_formula=card.name,
-            feedback=("This problem is stated symbolically, so the reference answer is a "
-                      "formula rather than a number. Grading a numeric submission against "
-                      "it isn't meaningful. Reference: "
-                      + "; ".join(f"{k} = {v}" for k, v in reference.items())),
+            # The reference is in reference_answer; it is NOT repeated in feedback, so the
+            # UI decides when a student sees it (see ui_guidance.grade in the contract).
+            feedback=("This problem is written with symbols, not numbers, so its answer is a "
+                      "formula. Only numeric answers can be graded for now."),
             confidence="none",
         )
 
-    per_quantity, wrong = {}, []
+    per_quantity, wrong, missing = {}, [], []
     for name, ref_val in reference.items():
         if name not in student_answer:
+            missing.append(name)
             continue
         got = student_answer[name]
         ok = _close(got, ref_val)
@@ -210,11 +235,27 @@ def grade(problem_id, raw_problem, knowns, unknowns, student_answer,
             wrong.append((name, got, ref_val))
 
     if not per_quantity:
+        # The problem IS gradable; the student just sent nothing for it. Calling that
+        # not_assessable would put an "Unverified" badge on a verified problem.
         return GradeResult(
-            assessment=Assessment.NOT_ASSESSABLE,
+            assessment=Assessment.INCOMPLETE,
             reference_answer=reference,
-            feedback="The submission did not include any of the quantities being solved for.",
-            confidence="none",
+            reference_formula=card.name,
+            missing=missing,
+            feedback="No answer was given for: " + ", ".join(missing) + ".",
+            confidence="high",
+        )
+
+    if not wrong and missing:
+        return GradeResult(
+            assessment=Assessment.INCOMPLETE,
+            per_quantity=per_quantity,
+            reference_answer=reference,
+            reference_formula=card.name,
+            missing=missing,
+            feedback=("Every value you gave is right. Still missing: "
+                      + ", ".join(missing) + "."),
+            confidence="high",
         )
 
     if not wrong:
@@ -254,11 +295,17 @@ def grade(problem_id, raw_problem, knowns, unknowns, student_answer,
                     f"For this problem, {card.pitfalls}")
         assessment = Assessment.WRONG_METHOD
     else:
+        # No numbers in this text: the correct value is in reference_answer, and the UI
+        # decides when to show it. Putting it here would show it on the first wrong try.
+        # (It also removes the old `{ref_val:.4g}` format, which crashed on sympy values.)
         general = symbolic.get(name)
-        feedback = (f"Not correct. {name} should be {ref_val:.4g}, not {got:.4g}."
+        feedback = (f"Not correct. Your value for {name} doesn't match the verified answer."
                     + (f" The relationship is {name} = {general}." if general else "")
                     + f" Worth checking: {card.pitfalls}")
         assessment = Assessment.WRONG_VALUE
+
+    if missing:
+        feedback += " You also left out: " + ", ".join(missing) + "."
 
     return GradeResult(
         assessment=assessment,
@@ -269,4 +316,5 @@ def grade(problem_id, raw_problem, knowns, unknowns, student_answer,
         misconception=misconception,
         feedback=feedback,
         confidence="high",
+        missing=missing,
     )
