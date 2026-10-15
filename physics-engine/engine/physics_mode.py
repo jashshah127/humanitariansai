@@ -30,7 +30,7 @@ from dataclasses import dataclass, field, asdict
 from typing import Optional
 
 from parse import parse_problem, ParseError
-from pipeline import solve_physics_problem
+from pipeline import solve_physics_problem,symbolic_latex
 from event_log import EventLog
 from formula_kb import ALL_CARDS
 
@@ -80,6 +80,8 @@ class PhysicsModeResponse:
     formula_used: Optional[str] = None
     assumptions: list = field(default_factory=list)
     sources: dict = field(default_factory=dict)
+    formula_latex: list = field(default_factory=list)
+    general_answer_latex: Optional[dict] = None
     route: str = ""
     latency_ms: float = 0.0
     trace: Optional[dict] = None
@@ -203,11 +205,15 @@ class PhysicsEngineMode:
                 formula_used=card.name,
                 assumptions=solution["plan"]["assumptions"],
                 sources=parsed["sources"],
+                formula_latex=symbolic_latex(card),
+                general_answer_latex=solution["solve"].get("symbolic_answer_latex") or None,
                 route=route, latency_ms=elapsed, trace=solution,
             )
             if render == "tutor":
                 resp.hints = _hint_ladder(card, solution, parsed)
                 resp.answer = None  # tutor mode withholds the answer on purpose
+                resp.formula_latex = []  # the equations would give the hints away
+                resp.general_answer_latex = None
                 resp.explanation = ("Worked through as hints rather than a final answer. "
                                     "Each step is symbolically verified.")
 

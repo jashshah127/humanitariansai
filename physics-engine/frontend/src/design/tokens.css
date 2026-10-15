@@ -16,6 +16,7 @@
 
 :root {
   /* Brand */
+  --color-scheme: light;
   --color-brand: #871919;
   --color-brand-hover: #6b1313;
   --color-brand-contrast: #ffffff; /* text on brand-colored surfaces */
@@ -86,7 +87,7 @@
 }
 
 /* Dark mode — PROVISIONAL. Applies when the OS is dark, unless the page
-   forces light with data-theme="light". data-theme="dark" forces dark. */
+   forces light with data-theme="light". data-theme="dark" forces dark.
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --color-brand: #e05a5a;
@@ -136,7 +137,7 @@
   --color-danger: #f08a8a;
   --focus-ring: 0 0 0 3px #141414, 0 0 0 5px #f2f2f2;
 }
-
+*/
 /* Base styles that use the tokens */
 body {
   background: var(--color-bg);

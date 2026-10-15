@@ -29,6 +29,7 @@ class _SymbolDict(dict):
 
 
 _SYMBOLIC_CACHE = {}
+_LATEX_CACHE = {}
 
 
 def symbolic_solution(card):
@@ -53,8 +54,10 @@ def symbolic_solution(card):
     try:
         eqs = card.build_equations(_SymbolDict())
         symbolic_form = [f"{e.lhs} = {e.rhs}" for e in eqs]
+        latex_form = [f"{sp.latex(e.lhs)} = {sp.latex(e.rhs)}" for e in eqs]
     except Exception:
         symbolic_form = []
+        latex_form = []
     try:
         syms = [sp.Symbol(n) for n in card.solves_for]
         sols = sp.solve(card.build_equations(_SymbolDict()), syms, dict=True)
@@ -65,7 +68,13 @@ def symbolic_solution(card):
         sols, simplified = None, None
     result = (sols, simplified, symbolic_form)
     _SYMBOLIC_CACHE[card.id] = result
+    _LATEX_CACHE[card.id] = latex_form
     return result
+
+def symbolic_latex(card):
+    """The card's equations as LaTeX, for the UI. Cached with the symbolic solve."""
+    symbolic_solution(card)
+    return _LATEX_CACHE.get(card.id, [])
 
 
 def retrieve(unknowns_wanted, knowns_available, topic_hint=None):
@@ -257,6 +266,8 @@ def _solve_and_verify(card, knowns):
                                      for k, v in solved.items()},
                    "symbolic_form": symbolic_form,
                    "symbolic_answer": {k: str(v) for k, v in (symbolic_answer or {}).items()},
+                   "symbolic_answer_latex": {k: f"{sp.latex(sp.Symbol(k))} = {sp.latex(v)}"
+                                             for k, v in (symbolic_answer or {}).items()},
                    "symbolic_mode": symbolic_mode,
                    "ambiguous_multiple_roots": ambiguous, "n_symbolic_solutions": n_solutions,
                    "method": "sympy.solve (symbolic, cached; numbers substituted last)"}

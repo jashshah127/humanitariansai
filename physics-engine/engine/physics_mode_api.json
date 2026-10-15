@@ -1,6 +1,6 @@
 {
   "name": "physics_engine_mode",
-  "version": "1.0.0-phase1",
+  "version": "1.1.0-phase2",
   "description": "The contract Medhavy integrates against when the Physics Engine toggle is on. Analogous in placement to Google's AI Mode: a mode selector attached to the input, not a separate destination. The toggle's purpose is to make verification status visible to the student, so the single most important field in the response is `verification` -- not `answer`. An integration that renders the answer and drops the badge has removed the reason this mode exists.",
 
   "request": {
@@ -9,7 +9,7 @@
       "query": {"type": "string", "description": "The student's problem, as typed. Raw text; no pre-parsing required by the caller."},
       "session_id": {"type": "string", "description": "Required. Groups queries into a session for latency and engagement telemetry. NOT a student identifier."},
       "student_id": {"type": ["string", "null"], "description": "Optional and currently unused by this mode. Only grade mode (Phase 2) needs it, and it must not be sent until the data processing agreement question (Q6 in the brief) is settled. The event log will reject student_id on any event not scoped to carry it."},
-      "render": {"type": "string", "enum": ["solve", "tutor"], "default": "solve", "description": "solve returns the answer; tutor returns a progressive hint ladder and deliberately withholds the answer. Same underlying solution object, rendered differently -- per the brief's one-object-three-surfaces design. grade is Phase 2 and not implemented."},
+      "render": {"type": "string", "enum": ["solve", "tutor"], "default": "solve", "description": "solve returns the answer; tutor returns a progressive hint ladder and deliberately withholds the answer. Same underlying solution object, rendered differently -- per the brief's one-object-three-surfaces design. Grade mode is a separate pair of endpoints, not a render value: see `grade_mode` below."},
       "problem_id": {"type": ["string", "null"], "description": "Optional stable id for traceability across logs."}
     },
     "required": ["query", "session_id"]
@@ -36,6 +36,8 @@
       "assumptions": {"type": "array", "description": "Applicability conditions the matched formula assumes. Worth showing; several common wrong answers come from applying a formula outside its conditions."},
       "sources": {"type": "object", "description": "variable name -> the phrase in the student's own text it was read from. Enables 'we read 25 m/s from <this>' and makes a misparse traceable rather than mysterious."},
       "route": {"type": "string", "description": "Internal routing decision, for logs and debugging. Do not render to students."},
+      "formula_latex": {"type": "array", "items": {"type": "string"}, "description": "The matched card's equations as LaTeX, one string per equation. Empty in tutor render (it would give the hints away) and when no card matched."},
+      "general_answer_latex": {"type": ["object", "null"], "description": "variable name -> LaTeX of the rearranged general formula, e.g. \"T = \\frac{2 g m_1 m_2}{m_1 + m_2}\". Null in tutor render and when no card matched."},
       "latency_ms": {"type": "number"},
       "trace": {"type": ["object", "null"], "description": "Full solution object: every pipeline stage, verification checks, symbolic forms. For debugging and for the event log; not for the UI."}
     },
@@ -46,6 +48,58 @@
     "verified": "Show the answer with the badge. Surfacing formula_used and assumptions alongside is what makes it a verification tool rather than a fast calculator.",
     "needs_review": "Show every candidate with its applies_when condition. This is a genuine teaching moment -- the student choosing between two principles based on their problem's context is the physics. Do not auto-pick.",
     "unverified": "Medhavy's model answers normally, but the badge must be visible. This is the same answer quality as toggle-off; the badge is the only difference, and it is the whole point.",
-    "never": "Never render an unverified or needs_review answer under a verified badge. The engine cannot prevent that on the client side -- it is an integration invariant, and the reason needs_llm_completion is a required field."
+    "never": "Never render an unverified or needs_review answer under a verified badge. The engine cannot prevent that on the client side -- it is an integration invariant, and the reason needs_llm_completion is a required field.",
+    "grade": "Render the grade `badge` first, as for solve. Show per_quantity as right/wrong per value. Hide reference_answer and every per_quantity `reference` after the FIRST wrong attempt; show them after the second wrong attempt, or when the student asks. This is a UI rule only: the values are in the response, so it stops accidental spoilers, not a determined student. feedback never contains the correct value, so it is always safe to show."
+  },
+
+  "grade_mode": {
+    "description": "Two steps. POST /parse reads the problem and says which quantities the student must answer, with labels and units, without the answer. POST /grade then checks the student's numbers. Passing /parse's `parsed` object to /grade means the problem is parsed once: one model call, and no risk of the second parse naming a quantity differently. Both need `Authorization: Bearer <token>`. Nothing is stored.",
+    "parse_request": {
+      "type": "object",
+      "properties": {
+        "query": {"type": "string", "description": "The problem as typed."},
+        "session_id": {"type": "string", "description": "Same as /solve. Not a student identifier."}
+      },
+      "required": ["query"]
+    },
+    "parse_response": {
+      "type": "object",
+      "properties": {
+        "gradable": {"type": "boolean", "description": "False when the engine has no single verified reference: no card matched, more than one principle fits, verification failed, or the problem is written in symbols."},
+        "reason": {"type": ["string", "null"], "description": "Plain-language reason when gradable is false. Safe to show a student."},
+        "unknowns": {"type": "array", "description": "What the student must answer: [{name, label, unit}]. `name` is the key to use in student_answer; `label` and `unit` are for display. Empty when not gradable."},
+        "given": {"type": "array", "description": "What the engine read from the problem: [{name, value, unit, added}]. `added` = a standard constant the student didn't state (e.g. g). Show it so a misread problem is caught before grading."},
+        "parsed": {"type": ["object", "null"], "description": "{knowns, unknowns, topic_hint}. Opaque to the UI: send it back to /grade unchanged. Null when not gradable."}
+      },
+      "required": ["gradable", "unknowns", "given", "parsed"]
+    },
+    "grade_request": {
+      "type": "object",
+      "properties": {
+        "query": {"type": "string"},
+        "session_id": {"type": "string"},
+        "parsed": {"type": ["object", "null"], "description": "From /parse. If missing, /grade parses `query` itself (one model call, and names may differ from an earlier parse)."},
+        "student_answer": {"type": "object", "description": "name -> number, for the names in /parse's `unknowns`. Numbers only: strings are rejected with 400."}
+      },
+      "required": ["student_answer"]
+    },
+    "grade_response": {
+      "type": "object",
+      "properties": {
+        "verification": {"type": "string", "enum": ["verified", "unverified"], "description": "verified = graded against a symbolically verified reference. unverified = not graded (assessment is not_assessable)."},
+        "badge": {"type": "string", "description": "Label for the verification state, safe to show verbatim."},
+        "assessment": {"type": "string", "enum": ["correct", "wrong_value", "wrong_method", "incomplete", "not_assessable"], "description": "wrong_method = the wrong value matches a known mistake (see misconception). incomplete = every value given is right but some asked-for ones are missing."},
+        "per_quantity": {"type": "object", "description": "name -> {submitted, reference, correct}, for each submitted asked-for quantity. `reference` is the correct value: see ui_guidance.grade."},
+        "reference_answer": {"type": ["object", "null"], "description": "name -> correct value, asked-for quantities only. See ui_guidance.grade."},
+        "reference_formula": {"type": ["string", "null"], "description": "Name of the principle the reference used."},
+        "divergence": {"type": ["object", "null"], "description": "Reserved for step-by-step grading. Not filled by the web UI yet."},
+        "misconception": {"type": ["string", "null"], "description": "Machine name of the matched mistake (sign_flip, reciprocal, factor_2_high, ...). For analytics; the readable version is in feedback."},
+        "missing": {"type": "array", "description": "Asked-for names the student left out."},
+        "feedback": {"type": "string", "description": "Plain-language result. Never contains the correct value."},
+        "confidence": {"type": "string", "enum": ["high", "none"]}
+      },
+      "required": ["verification", "badge", "assessment", "feedback"]
+    },
+    "errors": "400 = bad request body (message in `error`). 401 = bad token. 429 = rate limited (only a /parse, or a /grade without `parsed`, uses model quota). 503 = engine error; safe to retry."
   }
 }
