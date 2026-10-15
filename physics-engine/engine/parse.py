@@ -197,9 +197,15 @@ class OllamaLLM:
     it is the only one safe to point at student work, since nothing leaves the machine.
     """
 
-    def __init__(self, model="llama3.2", host="http://localhost:11434"):
+    # A fixed seed makes runs repeatable. temperature=0 alone was not enough: the same
+    # prompt to qwen2.5:7b gave different parses on two runs of the same 40 problems,
+    # so differences between runs mixed model randomness with code changes.
+    DEFAULT_SEED = 42
+
+    def __init__(self, model="llama3.2", host="http://localhost:11434", seed=DEFAULT_SEED):
         self.model = model
         self.host = host
+        self.seed = seed
 
     def __call__(self, prompt):
         import json as _json
@@ -209,7 +215,7 @@ class OllamaLLM:
             "model": self.model,
             "prompt": prompt,
             "stream": False,
-            "options": {"temperature": 0},
+            "options": {"temperature": 0, "seed": self.seed},
         }).encode()
         req = urllib.request.Request(f"{self.host}/api/generate", data=body,
                                      headers={"Content-Type": "application/json"})
@@ -266,6 +272,10 @@ class StubLLM:
 # ---------------------------------------------------------------------------
 # Parse
 # ---------------------------------------------------------------------------
+# A backslash that is NOT already part of \\, \" or \uXXXX.
+_LONE_BACKSLASH = re.compile(r'(?<!\\)\\(?![\\"]|u[0-9a-fA-F]{4})')
+
+
 def _extract_json(text):
     """Pull a JSON object out of a model response, tolerating markdown fences or
     a stray sentence of preamble."""
@@ -280,10 +290,26 @@ def _extract_json(text):
     end = text.rfind("}")
     if start == -1 or end == -1 or end < start:
         raise ParseError(f"no JSON object found in model response: {text[:200]}")
+    body = text[start:end + 1]
     try:
-        return json.loads(text[start:end + 1])
+        return json.loads(body)
     except json.JSONDecodeError as e:
-        raise ParseError(f"malformed JSON in model response: {e}")
+        first_error = e
+
+    # Last try: LaTeX copied from the problem text. The prompt asks for the exact
+    # source phrase, so models paste things like \mu or \mathrm{C} with a single
+    # backslash, which is invalid JSON ("Invalid \escape") and used to throw away a
+    # parse whose numbers were all fine. Double every lone backslash, keeping the
+    # escapes a model writes on purpose (\\, \", and \uXXXX), then retry once.
+    repaired = _LONE_BACKSLASH.sub(r"\\\\", body)
+    if repaired != body:
+        try:
+            payload = json.loads(repaired)
+            payload["_json_repaired"] = True
+            return payload
+        except json.JSONDecodeError:
+            pass
+    raise ParseError(f"malformed JSON in model response: {first_error}")
 
 
 def parse_problem(raw_problem, llm):
@@ -300,6 +326,7 @@ def parse_problem(raw_problem, llm):
     """
     prompt = PARSE_PROMPT.format(glossary=glossary_for_prompt(), problem=raw_problem)
     payload = _extract_json(llm(prompt))
+    json_repaired = bool(payload.pop("_json_repaired", False))
 
     raw_knowns = payload.get("knowns", {})
     raw_unknowns = payload.get("unknowns", [])
@@ -322,8 +349,35 @@ def parse_problem(raw_problem, llm):
             values[name] = entry
             sources[name] = ""
 
+    # Models often write a symbolic quantity as text instead of the {"symbolic": true}
+    # form the prompt asks for: "Q": {"value": "Q"}, "omega": {"value": "\\omega"}, or
+    # even a description ("point charge at the center"). Failing the whole parse on
+    # that threw away problems that were read correctly. Instead:
+    #   * a string that is really a number ("4.5") becomes that number;
+    #   * any other string makes that variable symbolic, under ITS OWN name -- the text
+    #     is never trusted as a value (a model that wrote "a": "b" swapped two radii);
+    #   * every coercion is reported, and a string that looks like a formula is
+    #     flagged separately, since it usually means the model wrote an answer or a
+    #     given relation into the knowns.
+    coerced, formula_values = {}, {}
+    for n, v in list(values.items()):
+        if isinstance(v, bool) or not isinstance(v, str):
+            continue
+        try:
+            values[n] = float(v.strip())
+            coerced[n] = v
+            continue
+        except ValueError:
+            pass
+        values[n] = sp.Symbol(n)
+        symbolic_names.append(n)
+        coerced[n] = v
+        if any(op in v for op in ("=", "/", "*", "^", "+", "(")):
+            formula_values[n] = v
+
     bad = [n for n, v in values.items()
-           if not isinstance(v, (int, float)) and not isinstance(v, sp.Basic)]
+           if isinstance(v, bool)
+           or (not isinstance(v, (int, float)) and not isinstance(v, sp.Basic))]
     if bad:
         raise ParseError(f"non-numeric, non-symbolic values for: {bad}")
 
@@ -349,6 +403,9 @@ def parse_problem(raw_problem, llm):
         "injected": injected,
         "symbolic_knowns": symbolic_names,
         "normalization": norm_report,
+        "json_repaired": json_repaired,
+        "coerced_to_value_or_symbol": coerced,
+        "formula_given_as_value": formula_values,
         "notes": payload.get("notes", ""),
         "raw": payload,
     }

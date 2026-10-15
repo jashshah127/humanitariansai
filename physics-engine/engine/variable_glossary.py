@@ -169,7 +169,10 @@ GLOSSARY = {
                       unit="m/s", aliases=["source_speed", "v_src"]),
     "n_harmonic": dict(desc="harmonic number. Open pipe: any integer. Closed pipe: ODD only",
                        unit="dimensionless",
-                       aliases=["harmonic", "harmonic_number", "mode_number", "n"]),
+                       aliases=["harmonic", "harmonic_number", "mode_number"]),
+    # No bare "n" alias: in this KB "n" also means moles (PV = nRT), and in E&M
+    # problems it means turns per metre. Mapping it to the harmonic number turned
+    # solenoid problems into sound-pipe problems.
     "v_escape":  dict(desc="escape velocity from a body's surface", unit="m/s",
                       aliases=["escape_velocity", "escape_speed", "v_esc"]),
 
@@ -263,22 +266,63 @@ GLOSSARY = {
                      aliases=["emf", "induced_emf", "induced_voltage"]),
 }
 
-# Reverse lookup: alias (lowercased) -> canonical
-_ALIAS_TO_CANONICAL = {}
-for canonical, meta in GLOSSARY.items():
-    _ALIAS_TO_CANONICAL[canonical.lower()] = canonical
-    for alias in meta["aliases"]:
-        _ALIAS_TO_CANONICAL[alias.lower()] = canonical
+# Constants are canonical names too. They are injected, never parsed, but a model
+# that writes mu_0 or epsilon_0 itself should not see them reported as unrecognized.
+CONSTANT_ALIASES = {
+    "k_e": ["coulomb_constant", "ke"],
+    "epsilon_0": ["epsilon0", "eps_0", "eps0", "permittivity_of_free_space",
+                  "vacuum_permittivity"],
+    "mu_0": ["mu0", "permeability_of_free_space", "vacuum_permeability"],
+    "G": ["gravitational_constant"],
+}
+
+# Reverse lookups.
+#
+# CASE MATTERS in physics notation: b (a radius) is not B (a magnetic field), n (turns
+# per metre) is not N, i is not I. The old lookup lowercased everything, so a
+# radius b was silently renamed to the magnetic field B. That is worse than an
+# unrecognized name: it can let a card close on the wrong physics and return a
+# "verified" answer.
+#
+# So: short names (1-2 characters) only ever match with exact case. Case-insensitive
+# matching is kept for longer, word-like aliases ("Magnetic_Field" -> B), where case
+# carries no physical meaning.
+_FOLD_MIN_LEN = 3
+_ALIAS_EXACT = {}
+_ALIAS_FOLDED = {}
+
+
+def _register(alias, canonical):
+    _ALIAS_EXACT.setdefault(alias, canonical)
+    if len(alias) >= _FOLD_MIN_LEN:
+        _ALIAS_FOLDED.setdefault(alias.lower(), canonical)
+
+
+for _canonical, _meta in GLOSSARY.items():
+    _register(_canonical, _canonical)
+for _canonical in CONSTANTS:
+    _register(_canonical, _canonical)
+for _canonical, _meta in GLOSSARY.items():
+    for _alias in _meta["aliases"]:
+        _register(_alias, _canonical)
+for _canonical, _aliases in CONSTANT_ALIASES.items():
+    for _alias in _aliases:
+        _register(_alias, _canonical)
 
 
 def normalize_name(name):
     """Map whatever the LLM emitted onto a canonical card variable name.
     Returns (canonical_name, was_recognized)."""
-    if name in GLOSSARY:
+    name = name.strip()
+    if name in GLOSSARY or name in CONSTANTS:
         return name, True
-    hit = _ALIAS_TO_CANONICAL.get(name.strip().lower())
+    hit = _ALIAS_EXACT.get(name)
     if hit:
         return hit, True
+    if len(name) >= _FOLD_MIN_LEN:
+        hit = _ALIAS_FOLDED.get(name.lower())
+        if hit:
+            return hit, True
     return name, False
 
 
@@ -325,8 +369,11 @@ def inject_constants(knowns, unknowns=None, cards=None):
     Never overwrites a value already present: a problem stating 'on the Moon, g = 1.62'
     must beat the default."""
     injected = {}
-    if cards is not None and unknowns:
-        wanted_unknowns = set(unknowns)
+    if cards is not None:
+        # Scoped. With no unknowns, no card is asked for anything, so nothing is
+        # needed. (This used to fall through to the blanket set and inject all five
+        # constants into a problem that asked for nothing.)
+        wanted_unknowns = set(unknowns or [])
         needed = set()
         for card in cards:
             if set(card.solves_for) & wanted_unknowns:
