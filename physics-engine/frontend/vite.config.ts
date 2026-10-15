@@ -15,6 +15,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/solve": api,
+      "/parse": api,
       "/grade": api,
       "/health": api,
       "/cards": api,

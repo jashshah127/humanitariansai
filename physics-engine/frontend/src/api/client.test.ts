@@ -55,6 +55,19 @@ describe("postJson", () => {
     expect((await errorFrom(postJson("/solve", {}, "t"))).kind).toBe("http");
   });
 
+  it("explains a 503 as a temporary engine error", async () => {
+    vi.stubGlobal("fetch", reply(503, { error: "detail" }));
+    const err = await errorFrom(postJson("/grade", {}, "t"));
+    expect(err.kind).toBe("http");
+    expect(err.message).toMatch(/try again in a minute/);
+  });
+
+  it("explains a 400 without showing the server's raw text", async () => {
+    vi.stubGlobal("fetch", reply(400, { error: "student_answer['a'] must be a number" }));
+    const err = await errorFrom(postJson("/grade", {}, "t"));
+    expect(err.message).not.toMatch(/student_answer/);
+  });
+
   it("maps a failed fetch to a network error", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
     expect((await errorFrom(postJson("/solve", {}, "t"))).kind).toBe("network");

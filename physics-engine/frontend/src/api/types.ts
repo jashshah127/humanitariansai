@@ -44,3 +44,78 @@ export interface SolveResponse {
   /** variable -> LaTeX of the rearranged general formula, e.g. "T = \\frac{...}{...}". */
   general_answer_latex?: Record<string, string> | null;
 }
+
+// ---------------------------------------------------------------- grade mode
+// Two steps (see grade_mode in physics_mode_api.json): /parse says what to answer,
+// /grade checks the student's numbers.
+
+/** One quantity the student must answer. `name` is the key to send back. */
+export interface QuantitySpec {
+  name: string;
+  /** Plain-language description, e.g. "tension in the string". */
+  label: string;
+  /** Unit the answer must be in, e.g. "m/s^2". Can be "" or "dimensionless". */
+  unit: string;
+}
+
+/** A value the engine read from the problem, shown so a misread is caught early. */
+export interface GivenValue {
+  name: string;
+  value: number;
+  unit: string;
+  /** A standard constant the student didn't state (e.g. g). */
+  added: boolean;
+}
+
+/** Opaque to the UI: sent back to /grade unchanged so the problem is parsed once. */
+export interface ParsedProblem {
+  knowns: Record<string, number>;
+  unknowns: string[];
+  topic_hint: string | null;
+}
+
+export interface ParseRequest {
+  query: string;
+  session_id: string;
+}
+
+export interface ParseResponse {
+  gradable: boolean;
+  /** Plain-language reason when gradable is false. */
+  reason?: string | null;
+  unknowns: QuantitySpec[];
+  given: GivenValue[];
+  parsed: ParsedProblem | null;
+}
+
+export interface GradeRequest {
+  query: string;
+  session_id: string;
+  parsed?: ParsedProblem | null;
+  /** Numbers only: the server rejects strings with a 400. */
+  student_answer: Record<string, number>;
+}
+
+export interface QuantityGrade {
+  submitted: number;
+  /** The correct value. Hidden by the UI until ui_guidance.grade allows it. */
+  reference: AnswerValue;
+  correct: boolean;
+}
+
+export interface GradeResponse {
+  /** Untrusted, like SolveResponse.verification: normalize before use. */
+  verification: string;
+  badge: string;
+  /** Untrusted: normalize with normalizeAssessment() before use. */
+  assessment: string;
+  per_quantity?: Record<string, QuantityGrade>;
+  reference_answer?: AnswerMap | null;
+  reference_formula?: string | null;
+  /** Machine name of the matched mistake; the readable version is in `feedback`. */
+  misconception?: string | null;
+  missing?: string[];
+  /** Never contains the correct value, so always safe to show. */
+  feedback: string;
+  confidence?: string;
+}

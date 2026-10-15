@@ -62,6 +62,21 @@ export function isAbort(e: unknown): boolean {
   return e instanceof DOMException && e.name === "AbortError";
 }
 
+function httpMessage(status: number): string {
+  if (status === 400) {
+    return "The engine couldn't read what was sent. Check that every answer is a plain number.";
+  }
+  if (status === 503) {
+    return "The engine couldn't finish this problem. This is usually temporary; try again in a minute.";
+  }
+  // server.py never sends a 500 itself (it catches every error). In development a 500
+  // comes from Vite's proxy when it can't reach server.py on :8000.
+  if (status === 500 && import.meta.env.DEV) {
+    return "Can't reach the engine. Check that server.py is running on port 8000.";
+  }
+  return `Something went wrong on the server (error ${status}).`;
+}
+
 export async function postJson<T>(
   path: string,
   body: unknown,
@@ -111,9 +126,7 @@ export async function postJson<T>(
       const wait = Number(res.headers.get("Retry-After")) || null;
       throw new ApiError("rate", "Too many requests right now.", wait);
     }
-    if (!res.ok) {
-      throw new ApiError("http", `Something went wrong on the server (error ${res.status}).`);
-    }
+    if (!res.ok) throw new ApiError("http", httpMessage(res.status));
 
     try {
       return (await res.json()) as T;

@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { ApiError, isAbort, loadToken, saveToken } from "../../api/client.ts";
+import { grade, parseForGrading } from "../../api/grade.ts";
 import { solve } from "../../api/solve.ts";
-import type { RenderMode, SolveResponse } from "../../api/types.ts";
+import type { GradeResponse, ParseResponse, SolveResponse } from "../../api/types.ts";
 import { Button } from "../../design/components/Button.tsx";
+import { isWrong, normalizeAssessment } from "../grade/answer.ts";
+import { GradeSection } from "../grade/GradeSection.tsx";
 import { ResultPanel } from "../result/ResultPanel.tsx";
 import { ErrorState } from "./ErrorState.tsx";
 import { ExampleChips } from "./ExampleChips.tsx";
 import { MAX_CHARS, MODES, parseMode } from "./mode.ts";
+import type { WorkspaceMode } from "./mode.ts";
 import { ModeToggle } from "./ModeToggle.tsx";
 import { ProblemInput } from "./ProblemInput.tsx";
 import styles from "./workspace.module.css";
@@ -31,6 +35,17 @@ export default function WorkspacePage() {
   const [resultId, setResultId] = useState(0);
   const [errorId, setErrorId] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
+  // What "Try again" repeats: the last request, whichever kind it was.
+  const lastRequestRef = useRef<(() => void) | null>(null);
+
+  // Grade mode. `setup` is the /parse reply for the problem text it was made from;
+  // editing the problem makes it stale, and the answer boxes are hidden until the
+  // student sets up again (the old boxes would belong to a different problem).
+  const [setup, setSetup] = useState<{ query: string; data: ParseResponse } | null>(null);
+  const [setupId, setSetupId] = useState(0);
+  const [graded, setGraded] = useState<GradeResponse | null>(null);
+  const [gradedId, setGradedId] = useState(0);
+  const [wrongAttempts, setWrongAttempts] = useState(0);
   // Read once: if <details open> followed `token`, it would snap shut on the first keystroke.
   const [tokenOpenAtStart] = useState(() => !loadToken());
 
@@ -46,10 +61,14 @@ export default function WorkspacePage() {
   }, [loading]);
 
   const trimmed = query.trim();
-  const canSubmit = !!trimmed && trimmed.length <= MAX_CHARS && !loading;
+  const setupCurrent = setup !== null && setup.query === trimmed;
+  // In grade mode the button sets up answer boxes; once they exist for this exact text,
+  // pressing it again would only spend another model call.
+  const canSubmit =
+    !!trimmed && trimmed.length <= MAX_CHARS && !loading && !(mode === "grade" && setupCurrent);
   const submitLabel = MODES.find((m) => m.value === mode)?.submit ?? "Solve";
 
-  function changeMode(next: RenderMode) {
+  function changeMode(next: WorkspaceMode) {
     setParams(
       (prev) => {
         const p = new URLSearchParams(prev);
@@ -66,22 +85,24 @@ export default function WorkspacePage() {
     saveToken(t);
   }
 
-  async function submit() {
-    if (!canSubmit) return;
+  /**
+   * Runs one request with the shared loading, slow-notice, cancel and error handling.
+   * A new request cancels the one in flight. The old result stays on screen, dimmed,
+   * until the new one arrives.
+   */
+  async function run(task: (signal: AbortSignal) => Promise<void>, onFail?: () => void) {
+    lastRequestRef.current = () => void run(task, onFail);
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
     setLoading(true);
     setError(null);
-    // The old result stays on screen, dimmed, until the new one arrives.
     try {
-      const data = await solve({ query: trimmed, render: mode, token, signal: controller.signal });
-      setResult(data);
-      setResultId((n) => n + 1);
+      await task(controller.signal);
     } catch (e) {
       if (isAbort(e)) return;
-      setResult(null);
+      onFail?.();
       setError(
         e instanceof ApiError ? e : new ApiError("network", "Something went wrong. Try again."),
       );
@@ -89,6 +110,44 @@ export default function WorkspacePage() {
     } finally {
       if (abortRef.current === controller) setLoading(false);
     }
+  }
+
+  function submit() {
+    if (!canSubmit) return;
+    if (mode === "grade") {
+      setUpGrading(trimmed);
+      return;
+    }
+    const render = mode;
+    void run(
+      async (signal) => {
+        const data = await solve({ query: trimmed, render, token, signal });
+        setResult(data);
+        setResultId((n) => n + 1);
+      },
+      () => setResult(null),
+    );
+  }
+
+  function setUpGrading(text: string) {
+    void run(async (signal) => {
+      const data = await parseForGrading({ query: text, token, signal });
+      setSetup({ query: text, data });
+      setSetupId((n) => n + 1);
+      setGraded(null);
+      setWrongAttempts(0);
+    });
+  }
+
+  function checkAnswers(answers: Record<string, number>) {
+    if (!setup) return;
+    const { query: text, data } = setup;
+    void run(async (signal) => {
+      const r = await grade({ query: text, parsed: data.parsed, answers, token, signal });
+      if (isWrong(normalizeAssessment(r.assessment))) setWrongAttempts((n) => n + 1);
+      setGraded(r);
+      setGradedId((n) => n + 1);
+    });
   }
 
   return (
@@ -104,10 +163,10 @@ export default function WorkspacePage() {
         className={styles.form}
         onSubmit={(e) => {
           e.preventDefault();
-          void submit();
+          submit();
         }}
       >
-        <ProblemInput value={query} onChange={setQuery} onSubmit={() => void submit()} />
+        <ProblemInput value={query} onChange={setQuery} onSubmit={submit} />
 
         <div className={styles.controls}>
           <ModeToggle value={mode} onChange={changeMode} disabled={loading} />
@@ -127,8 +186,27 @@ export default function WorkspacePage() {
               : "Working on it…"}
           </p>
         )}
-        {error && <ErrorState key={errorId} error={error} onRetry={() => void submit()} />}
-        {result && <ResultPanel key={resultId} data={result} busy={loading} />}
+        {error && (
+          <ErrorState key={errorId} error={error} onRetry={() => lastRequestRef.current?.()} />
+        )}
+        {mode !== "grade" && result && <ResultPanel key={resultId} data={result} busy={loading} />}
+        {mode === "grade" && setup && setupCurrent && (
+          <GradeSection
+            key={setupId}
+            setup={setup.data}
+            graded={graded}
+            gradedId={gradedId}
+            wrongAttempts={wrongAttempts}
+            onCheck={checkAnswers}
+            onReread={() => setUpGrading(setup.query)}
+            busy={loading}
+          />
+        )}
+        {mode === "grade" && setup && !setupCurrent && !loading && (
+          <p className={styles.status}>
+            The problem has changed. Press “{submitLabel}” to set up answer boxes for it.
+          </p>
+        )}
       </section>
 
       <details className={styles.token} open={tokenOpenAtStart}>

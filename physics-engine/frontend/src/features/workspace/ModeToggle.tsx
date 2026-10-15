@@ -1,10 +1,10 @@
-import type { RenderMode } from "../../api/types.ts";
 import { MODES } from "./mode.ts";
+import type { WorkspaceMode } from "./mode.ts";
 import styles from "./workspace.module.css";
 
 interface Props {
-  value: RenderMode;
-  onChange: (mode: RenderMode) => void;
+  value: WorkspaceMode;
+  onChange: (mode: WorkspaceMode) => void;
   disabled?: boolean;
 }
 
