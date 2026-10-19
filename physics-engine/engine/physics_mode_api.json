@@ -35,6 +35,8 @@
       "formula_used": {"type": ["string", "null"], "description": "Name of the physical principle applied. Worth surfacing -- it is most of why a student should believe the answer."},
       "assumptions": {"type": "array", "description": "Applicability conditions the matched formula assumes. Worth showing; several common wrong answers come from applying a formula outside its conditions."},
       "sources": {"type": "object", "description": "variable name -> the phrase in the student's own text it was read from. Enables 'we read 25 m/s from <this>' and makes a misparse traceable rather than mysterious."},
+      "card_id": {"type": ["string", "null"], "description": "Id of the formula card that solved the problem. Set only on the verified route in solve render; null in tutor render, because it names the principle and would give a hint away. Used by the UI to choose a diagram."},
+      "knowns": {"type": ["object", "null"], "description": "The card's own inputs as solved: variable name -> number, or symbol name when the problem was symbolic. Same rule as card_id."},
       "route": {"type": "string", "description": "Internal routing decision, for logs and debugging. Do not render to students."},
       "formula_latex": {"type": "array", "items": {"type": "string"}, "description": "The matched card's equations as LaTeX, one string per equation. Empty in tutor render (it would give the hints away) and when no card matched."},
       "general_answer_latex": {"type": ["object", "null"], "description": "variable name -> LaTeX of the rearranged general formula, e.g. \"T = \\frac{2 g m_1 m_2}{m_1 + m_2}\". Null in tutor render and when no card matched."},

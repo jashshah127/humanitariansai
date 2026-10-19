@@ -6,6 +6,7 @@ import { AnswerList } from "./AnswerList.tsx";
 import { CandidateList } from "./CandidateList.tsx";
 import { HintLadder } from "./HintLadder.tsx";
 import { WhyPanel } from "./WhyPanel.tsx";
+import { Visualization } from "../visualization/Visualization.tsx";
 import styles from "./result.module.css";
 
 export interface ResultPanelProps {
@@ -39,6 +40,9 @@ export function ResultPanel({ data, busy = false }: ResultPanelProps) {
         )}
 
         {answer && <AnswerList answer={answer} latex={data.general_answer_latex} />}
+
+        {/* Draws nothing unless the answer is verified and a diagram exists for its card. */}
+        {answer && <Visualization data={data} />}
 
         {data.candidates && data.candidates.length > 0 && (
           <CandidateList candidates={data.candidates} />
