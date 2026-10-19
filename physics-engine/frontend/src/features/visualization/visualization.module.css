@@ -1,0 +1,114 @@
+/* Tokens only -- no raw colors or sizes. */
+.figure {
+  margin: var(--space-6) 0 var(--space-4);
+}
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-md);
+}
+.ground {
+  stroke: var(--color-border);
+  stroke-width: 2;
+}
+.path {
+  fill: none;
+  stroke: var(--color-brand);
+  stroke-width: 2.5;
+}
+.guide {
+  stroke: var(--color-text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+.label {
+  fill: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 14px; /* SVG user units, scales with the drawing */
+}
+.ball {
+  fill: var(--color-text);
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+}
+.controls input[type="range"] {
+  flex: 1 1 12rem;
+  accent-color: var(--color-brand);
+}
+.play {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+.play:focus-visible,
+.controls input:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.sliderLabel {
+  color: var(--color-text-muted);
+}
+.readout {
+  font-family: var(--font-mono);
+  color: var(--color-text);
+}
+.caption {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* ---- Atwood diagram (Step 3) ---- */
+.string {
+  stroke: var(--color-text-muted);
+  stroke-width: 1.5;
+}
+.pulley {
+  fill: var(--color-surface);
+  stroke: var(--color-text);
+  stroke-width: 2;
+}
+.box {
+  fill: var(--color-surface);
+  stroke: var(--color-text);
+  stroke-width: 2;
+}
+.force {
+  stroke: var(--color-brand);
+  stroke-width: 3;
+}
+.forceHead {
+  fill: var(--color-brand);
+}
+.weight {
+  stroke: var(--color-text);
+  stroke-width: 3;
+}
+.plainHead {
+  fill: var(--color-text);
+}
+.accel {
+  stroke: var(--color-text-muted);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
