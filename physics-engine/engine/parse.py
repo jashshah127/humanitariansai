@@ -22,6 +22,7 @@ be traced to a misread number rather than blamed vaguely on "the parser."
 import json
 import sympy as sp
 import re
+import sys
 
 from formula_kb import ALL_CARDS
 from variable_glossary import (
@@ -162,7 +163,9 @@ class GeminiLLM:
                f"{self.model}:generateContent")
         body = _json.dumps({
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0},
+            #JSON mode: Gemini then only returns valid JSON, so a stray quote or a
+            # missing comma can't throw away a parse whose numbers were fine.
+            "generationConfig": {"temperature": 0, "responseMimeType": "application/json"},
         }).encode()
         req = urllib.request.Request(url, data=body, headers={
             "Content-Type": "application/json",
@@ -237,8 +240,11 @@ class FallbackLLM:
         errors = []
         for llm in self.llms:
             try:
-                return llm(prompt)
+                text = llm(prompt)
+                print(f"[parse] answered by {type(llm).__name__}", file=sys.stderr)
+                return text
             except ParseError as e:
+                print(f"[parse] {type(llm).__name__} failed, trying next: {e}", file=sys.stderr)
                 errors.append(f"{type(llm).__name__}: {e}")
         raise ParseError("all providers failed -- " + " | ".join(errors))
 
@@ -309,6 +315,9 @@ def _extract_json(text):
             return payload
         except json.JSONDecodeError:
             pass
+    # Log the raw reply on the server only. It is NOT put in the error message,
+    # because that message is shown to the student as the explanation.
+    print(f"[parse] malformed JSON from model: {text[:800]!r}", file=sys.stderr)
     raise ParseError(f"malformed JSON in model response: {first_error}")
 
 

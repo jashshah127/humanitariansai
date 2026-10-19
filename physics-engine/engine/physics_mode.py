@@ -82,12 +82,27 @@ class PhysicsModeResponse:
     sources: dict = field(default_factory=dict)
     formula_latex: list = field(default_factory=list)
     general_answer_latex: Optional[dict] = None
+    # Which card solved it, and the values it was solved from. Lets the UI draw a
+    # diagram from the engine's own numbers instead of re-parsing the text.
+    # Set only on deterministic_script in solve render (see tutor note below).
+    card_id: Optional[str] = None
+    knowns: Optional[dict] = None
     route: str = ""
     latency_ms: float = 0.0
     trace: Optional[dict] = None
 
     def to_dict(self):
         return asdict(self)
+
+def _json_knowns(knowns):  # only the card's own inputs are passed in
+    """Knowns as JSON-safe values: float when numeric, the symbol name otherwise."""
+    out = {}
+    for k, v in knowns.items():
+        try:
+            out[k] = float(v)
+        except (TypeError, ValueError):
+            out[k] = str(v)
+    return out
 
 def _fmt(v, spec):
     """Format a number with spec; show symbols and expressions as-is."""
@@ -207,6 +222,8 @@ class PhysicsEngineMode:
                 sources=parsed["sources"],
                 formula_latex=symbolic_latex(card),
                 general_answer_latex=solution["solve"].get("symbolic_answer_latex") or None,
+                card_id=card.id, knowns=_json_knowns({k: parsed["knowns"][k] for k in card.required_knowns
+                                      if k in parsed["knowns"]}),
                 route=route, latency_ms=elapsed, trace=solution,
             )
             if render == "tutor":
@@ -214,6 +231,8 @@ class PhysicsEngineMode:
                 resp.answer = None  # tutor mode withholds the answer on purpose
                 resp.formula_latex = []  # the equations would give the hints away
                 resp.general_answer_latex = None
+                resp.card_id = None  # the card id names the principle, which is hint 2
+                resp.knowns = None
                 resp.explanation = ("Worked through as hints rather than a final answer. "
                                     "Each step is symbolically verified.")
 

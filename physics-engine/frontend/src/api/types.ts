@@ -43,6 +43,10 @@ export interface SolveResponse {
   formula_latex?: string[];
   /** variable -> LaTeX of the rearranged general formula, e.g. "T = \\frac{...}{...}". */
   general_answer_latex?: Record<string, string> | null;
+  /** Id of the card that solved it. Solve render on the verified route only; null in tutor. */
+  card_id?: string | null;
+  /** The card's inputs as solved (number, or symbol name). Same rule as card_id. */
+  knowns?: Record<string, AnswerValue> | null;
 }
 
 // ---------------------------------------------------------------- grade mode
