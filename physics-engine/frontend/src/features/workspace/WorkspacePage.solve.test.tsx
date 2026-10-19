@@ -33,7 +33,9 @@ function json(body: unknown) {
 }
 
 function open(url: string, reply: unknown) {
-  const fetchMock = vi.fn((_url: string, _init?: RequestInit) => Promise.resolve(json(reply)));
+  const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() =>
+    Promise.resolve(json(reply)),
+  );
   vi.stubGlobal("fetch", fetchMock);
   const { container } = render(
     <MemoryRouter initialEntries={[url]}>
