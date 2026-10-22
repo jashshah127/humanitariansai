@@ -169,6 +169,117 @@ def grade_api_parses_once():
     return True, "/parse -> /grade uses one model call and never sends the answer early"
 
 
+class _EnvPatch:
+    """Set / unset environment variables for one check, then put them back."""
+
+    def __init__(self, **values):
+        self.values, self.saved = values, {}
+
+    def __enter__(self):
+        for k, v in self.values.items():
+            self.saved[k] = os.environ.get(k)
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+    def __exit__(self, *exc):
+        for k, v in self.saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
+def supabase_token_rules():
+    """Each Supabase Auth reply must map to the right outcome -- offline, via a fake fetch.
+    401/403 is the caller's fault (TokenError -> 401); anything else is ours (-> 503)."""
+    from supabase_auth import verify_supabase_token, AuthUnavailable
+    from jwt_auth import TokenError
+
+    def reply(status, body=b"{}"):
+        return lambda url, headers, timeout: (status, body)
+
+    def no_answer(url, headers, timeout):
+        raise TimeoutError()
+
+    cases = [("signed-in user", reply(200, b'{"id": "u1", "email": "a@test.dev"}'), "ok"),
+             ("signed out (403)", reply(403), TokenError),
+             ("expired/forged (401)", reply(401), TokenError),
+             ("Supabase error (500)", reply(500), AuthUnavailable),
+             ("timeout", no_answer, AuthUnavailable)]
+    with _EnvPatch(SUPABASE_URL="http://supabase.test", SUPABASE_PUBLISHABLE_KEY="pk"):
+        for label, fetch, want in cases:
+            try:
+                got = "ok" if verify_supabase_token("t", fetch=fetch)["id"] == "u1" else "bad user"
+            except (TokenError, AuthUnavailable) as e:
+                got = type(e)
+            if got != want:
+                return False, f"{label}: got {getattr(got, '__name__', got)}"
+    with _EnvPatch(SUPABASE_URL=None, SUPABASE_PUBLISHABLE_KEY=None):
+        try:
+            verify_supabase_token("t", fetch=reply(200))
+            return False, "accepted a token with Supabase not configured"
+        except AuthUnavailable:
+            pass
+    return True, "200 -> user; 401/403 -> rejected; 500/timeout/unconfigured -> unavailable"
+
+
+def server_auth_paths():
+    """server.py must accept minted AND Supabase tokens, answer 401 for a bad token and
+    503 when Supabase can't be asked -- and never call Supabase for a minted token."""
+    sys.path.insert(0, os.path.join(HERE, ".."))
+    import server
+    import supabase_auth
+    from jwt_auth import create_token
+
+    class FakeHandler:
+        def __init__(self, auth):
+            self.headers = {"Authorization": auth} if auth else {}
+            self.status = None
+
+        def _send(self, code, payload):
+            self.status = code
+
+    calls = []
+    supabase_reply = {"value": (200, b'{"id": "u1"}')}
+
+    def fake_fetch(url, headers, timeout):
+        calls.append(url)
+        r = supabase_reply["value"]
+        if isinstance(r, Exception):
+            raise r
+        return r
+
+    def run(auth):
+        h = FakeHandler(auth)
+        return ("allowed" if server._authenticate(h) else h.status)
+
+    real_fetch, supabase_auth._urllib_fetch = supabase_auth._urllib_fetch, fake_fetch
+    try:
+        with _EnvPatch(JWT_SECRET="ci-secret", SUPABASE_URL="http://supabase.test",
+                       SUPABASE_PUBLISHABLE_KEY="pk"):
+            minted = create_token({"sub": "ci"}, expires_in=60)
+            results = {"no header": (run(None), 401),
+                       "minted token": (run(f"Bearer {minted}"), "allowed")}
+            if calls:
+                return False, "a minted token triggered a Supabase call"
+            results["Supabase session"] = (run("Bearer supabase-token"), "allowed")
+            supabase_reply["value"] = (403, b'{"error_code": "session_not_found"}')
+            results["signed-out session"] = (run("Bearer supabase-token"), 401)
+            supabase_reply["value"] = TimeoutError()
+            results["Supabase unreachable"] = (run("Bearer supabase-token"), 503)
+        with _EnvPatch(JWT_SECRET="ci-secret", SUPABASE_URL=None, SUPABASE_PUBLISHABLE_KEY=None):
+            results["Supabase not configured"] = (run("Bearer supabase-token"), 401)
+    finally:
+        supabase_auth._urllib_fetch = real_fetch
+
+    wrong = {k: got for k, (got, want) in results.items() if got != want}
+    if wrong:
+        return False, f"wrong outcome for: {wrong}"
+    return True, "minted + Supabase tokens accepted; bad -> 401; Supabase down -> 503; minted never calls Supabase"
+
+
 def identity_scoping_enforced():
     from event_log import EventLog, ScopeViolation
     log = EventLog()
@@ -210,6 +321,9 @@ if __name__ == "__main__":
     check("grade mode", grade_mode_works)
     check("grade feedback hides the answer", grade_feedback_safe)
     check("grade API parses once", grade_api_parses_once)
+    print("\nAuth invariants")
+    check("Supabase token rules", supabase_token_rules)
+    check("server auth paths", server_auth_paths)
 
     print()
     if failures:
