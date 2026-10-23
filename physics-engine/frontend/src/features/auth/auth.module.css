@@ -1,0 +1,52 @@
+/* Tokens only, like workspace.module.css. */
+
+.page {
+  max-width: 26rem;
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-6);
+}
+
+.brand {
+  margin: 0 0 var(--space-4);
+  font-weight: var(--weight-bold);
+  color: var(--color-brand);
+}
+
+.title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-2xl);
+  line-height: var(--leading-tight);
+  color: var(--color-text);
+}
+
+.lead {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.note {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: var(--space-6) 0 0;
+  font-size: var(--text-sm);
+}
