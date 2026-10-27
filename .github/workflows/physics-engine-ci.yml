@@ -9,6 +9,11 @@ on:
     paths:
       - "physics-engine/**"
       - ".github/workflows/physics-engine-ci.yml"
+  push:
+    branches: [ main, feature-harsh ]
+    paths:
+      - "physics-engine/**"
+      - ".github/workflows/physics-engine-ci.yml"
   workflow_dispatch: # lets you run it by hand from the Actions tab
 
 concurrency:
