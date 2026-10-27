@@ -1,0 +1,29 @@
+# Staging service for the physics engine. Secrets are never stored here:
+# sync: false means the value is entered in the Render dashboard.
+# While Supabase work is still on feature-harsh, staging tracks that branch.
+# Change `branch` to main once feature-atharva is merged.
+services:
+  - type: web
+    name: physics-engine-staging
+    runtime: python
+    plan: free
+    region: oregon
+    branch: feature-harsh
+    rootDir: physics-engine
+    buildCommand: pip install -r requirements.txt && npm --prefix frontend ci && npm --prefix frontend run build
+    startCommand: python3 server.py
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
