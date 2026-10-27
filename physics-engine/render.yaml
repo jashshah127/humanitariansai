@@ -13,6 +13,9 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python3 server.py
+    healthCheckPath: /health
     envVars:
       - key: GEMINI_API_KEY
+        sync: false        # set in the dashboard, never committed
+      - key: JWT_SECRET
         sync: false        # set in the dashboard, never committed
