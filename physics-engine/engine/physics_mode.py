@@ -29,6 +29,8 @@ import time
 from dataclasses import dataclass, field, asdict
 from typing import Optional
 
+import sympy as sp
+
 from parse import parse_problem, ParseError
 from pipeline import solve_physics_problem,symbolic_latex
 from event_log import EventLog
@@ -111,6 +113,38 @@ def _fmt(v, spec):
     except (TypeError, ValueError):
         return str(v)
 
+def _tex_name(name):
+    """A variable name as LaTeX, the same way the solutions panel writes it."""
+    return sp.latex(sp.Symbol(name))
+
+
+def _tex_value(v, spec):
+    """A known or answer as LaTeX: numbers formatted with spec, symbols and formulas via
+    sympy. Symbolic answers arrive as sympy's own str() output, so they are read back
+    with sympify; anything that still fails is shown as plain text, never dropped."""
+    if isinstance(v, str):
+        try:
+            v = sp.sympify(v)
+        except (sp.SympifyError, TypeError, SyntaxError):
+            return r"\text{" + v + "}"
+    if isinstance(v, sp.Basic) and not v.is_number:
+        return sp.latex(v)
+    return _fmt(v, spec)
+
+
+def _article(word):
+    """'an' before a vowel sound ("an induction problem"), else 'a'."""
+    return "an" if word[:1].lower() in "aeiou" else "a"
+
+
+def _tex_given(name, v):
+    """One 'Given' item. A quantity stated as a symbol is listed by name alone
+    ("m_1"), not as the meaningless "m_1 = m_1"."""
+    if isinstance(v, sp.Symbol) and v.name == name:
+        return f"${_tex_name(name)}$"
+    return f"${_tex_name(name)} = {_tex_value(v, 'g')}$"
+
+
 def _hint_ladder(card, solution, parse_result):
     """Progressive hints for tutor rendering, derived entirely from the plan object --
     no second LLM call. The brief specifies 'targeted hints from the plan object', and
@@ -118,24 +152,32 @@ def _hint_ladder(card, solution, parse_result):
     the ladder is a rendering of data we have rather than new generation.
 
     Deliberately ordered so each rung reveals strictly less than the next, and the
-    answer is last."""
-    knowns = ", ".join(f"{k} = {_fmt(v, 'g')}" for k, v in parse_result["knowns"].items()
+    answer is last.
+
+    Math is written as LaTeX between $...$ (see `hints` in physics_mode_api.json), built
+    with sympy.latex -- the same LaTeX the solutions panel shows. The prose parts come
+    from the card as before and contain no $."""
+    knowns = ", ".join(_tex_given(k, v)
+                       for k, v in parse_result["knowns"].items()
                        if k not in parse_result.get("injected", {}))
-    unknowns = ", ".join(parse_result["unknowns"])
+    unknowns = ", ".join(f"${_tex_name(u)}$" for u in parse_result["unknowns"])
+    equations = "; ".join(f"${e}$" for e in symbolic_latex(card))
     ladder = [
         f"Start by listing what you're given and what you're solving for. "
         f"Given: {knowns}. Find: {unknowns}.",
-        f"This is a {card.subtopic.lower()} problem. The principle that applies here: {card.name}.",
+        f"This is {_article(card.subtopic)} {card.subtopic.lower()} problem. "
+        f"The principle that applies here: {card.name}.",
         f"Check the conditions before using it -- {card.applicability}",
-        f"The relationship you need: {'; '.join(solution['solve']['symbolic_form'])}",
+        f"The relationship you need: {equations}",
     ]
     if card.pitfalls:
         ladder.append(f"Common mistake to avoid here: {card.pitfalls}")
-    sym = solution["solve"].get("symbolic_answer") or {}
-    if sym:
-        general = "; ".join(f"{k} = {v}" for k, v in sym.items())
+    sym_tex = solution["solve"].get("symbolic_answer_latex") or {}
+    if sym_tex:
+        general = "; ".join(f"${v}$" for v in sym_tex.values())
         ladder.append(f"Rearranged for what you're solving for: {general}")
-    final = ", ".join(f"{k} = {_fmt(v, '.4g')}" for k, v in solution["final_answer"].items())
+    final = ", ".join(f"${_tex_name(k)} = {_tex_value(v, '.4g')}$"
+                      for k, v in solution["final_answer"].items())
     ladder.append(f"Worked result: {final}")
     return ladder
 

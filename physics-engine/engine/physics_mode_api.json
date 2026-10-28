@@ -30,7 +30,7 @@
       },
       "answer": {"type": ["object", "null"], "description": "variable name -> numeric value. Null in tutor render (withheld on purpose) and on the needs_review / unverified routes."},
       "candidates": {"type": ["array", "null"], "description": "Present only on needs_review. Each entry has principle, applies_when, and answer. Render all of them; picking one silently defeats the route."},
-      "hints": {"type": ["array", "null"], "description": "Present only in tutor render. Ordered ladder, each rung revealing more than the last, answer last. Reveal one at a time."},
+      "hints": {"type": ["array", "null"], "description": "Present only in tutor render. Ordered ladder, each rung revealing more than the last, answer last. Reveal one at a time. Inline math is LaTeX between $...$; render those parts as math and the rest as plain text."},
       "explanation": {"type": "string", "description": "Plain-language account of what was done. Assembled from the card and the verify stage, not generated, so it cannot claim a check that did not run."},
       "formula_used": {"type": ["string", "null"], "description": "Name of the physical principle applied. Worth surfacing -- it is most of why a student should believe the answer."},
       "assumptions": {"type": "array", "description": "Applicability conditions the matched formula assumes. Worth showing; several common wrong answers come from applying a formula outside its conditions."},
