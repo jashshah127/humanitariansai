@@ -54,9 +54,22 @@ export function SpringDiagram({ data }: { data: SpringData }) {
           {title}
         </text>
         <line className={styles.ground} x1={16} y1={ground} x2={W - 16} y2={ground} />
-        <line className={styles.wall} x1={WALL_X} y1={ground} x2={WALL_X} y2={ground - BLOCK - 10} />
+        <line
+          className={styles.wall}
+          x1={WALL_X}
+          y1={ground}
+          x2={WALL_X}
+          y2={ground - BLOCK - 10}
+        />
         <path className={styles.wire} d={coil(WALL_X, blockX, midY)} />
-        <rect className={styles.box} x={blockX} y={ground - BLOCK} width={BLOCK} height={BLOCK} rx={4} />
+        <rect
+          className={styles.box}
+          x={blockX}
+          y={ground - BLOCK}
+          width={BLOCK}
+          height={BLOCK}
+          rx={4}
+        />
         <text className={styles.label} x={blockX + BLOCK / 2} y={midY + 5} textAnchor="middle">
           {m} kg
         </text>
@@ -71,7 +84,12 @@ export function SpringDiagram({ data }: { data: SpringData }) {
               y2={midY}
               markerEnd={`url(#${head})`}
             />
-            <text className={styles.label} x={blockX + BLOCK + 10 + V_ARROW / 2} y={midY - 12} textAnchor="middle">
+            <text
+              className={styles.label}
+              x={blockX + BLOCK + 10 + V_ARROW / 2}
+              y={midY - 12}
+              textAnchor="middle"
+            >
               v = {v} m/s
             </text>
           </>

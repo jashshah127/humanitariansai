@@ -17,7 +17,7 @@ export function HintLadder({ hints }: { hints: string[] }) {
       </h2>
       <ol className={styles.hints}>
         {hints.slice(0, shown).map((hint, i) => (
-                    <li key={i}>
+          <li key={i}>
             <MathText text={hint} />
           </li>
         ))}

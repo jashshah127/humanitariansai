@@ -92,7 +92,11 @@ describe("card-specific checks", () => {
 
   it("incline: a frictionless slope is still drawn", () => {
     const a = 9.8 * 0.5;
-    const res = { ...INCLINE_RES, knowns: { ...INCLINE_RES.knowns, mu: 0 }, answer: { a, v: Math.sqrt(8 * a) } };
+    const res = {
+      ...INCLINE_RES,
+      knowns: { ...INCLINE_RES.knowns, mu: 0 },
+      answer: { a, v: Math.sqrt(8 * a) },
+    };
     expect(inclineData(res as SolveResponse)).not.toBeNull();
   });
 
@@ -123,7 +127,11 @@ describe("card-specific checks", () => {
   });
 
   it("wire: a wire along the field (no force) is not drawn", () => {
-    const res = { ...WIRE_RES, knowns: { ...WIRE_RES.knowns, theta_deg: 180 }, answer: { F: 1e-16 } };
+    const res = {
+      ...WIRE_RES,
+      knowns: { ...WIRE_RES.knowns, theta_deg: 180 },
+      answer: { F: 1e-16 },
+    };
     expect(wireData(res as SolveResponse)).toBeNull();
   });
 

@@ -125,8 +125,8 @@ export function SpeedTimeGraph({ data }: { data: KinematicsData }) {
       </p>
 
       <figcaption className={styles.caption}>
-        Drawn from the verified answer above. Steady acceleration gives a straight line; the
-        shaded area under it is the distance travelled.
+        Drawn from the verified answer above. Steady acceleration gives a straight line; the shaded
+        area under it is the distance travelled.
       </figcaption>
     </figure>
   );

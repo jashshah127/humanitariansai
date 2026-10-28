@@ -74,7 +74,12 @@ export function SphereFieldGraph({ data }: { data: SphereData }) {
           height={plotH}
           data-testid="inside-region"
         />
-        <text className={styles.rowTitle} x={(LEFT + sx(data.R)) / 2} y={TOP + 18} textAnchor="middle">
+        <text
+          className={styles.rowTitle}
+          x={(LEFT + sx(data.R)) / 2}
+          y={TOP + 18}
+          textAnchor="middle"
+        >
           inside
         </text>
         <text className={styles.rowTitle} x={sx(data.R) + 12} y={TOP + 18}>
@@ -137,8 +142,8 @@ export function SphereFieldGraph({ data }: { data: SphereData }) {
 
       <figcaption className={styles.caption}>
         Drawn from the verified answer above. The curve shows the shape of the field: a straight
-        rise inside the sphere, then a fall-off outside. Only R and the marked points A and B
-        are numbers from the engine.
+        rise inside the sphere, then a fall-off outside. Only R and the marked points A and B are
+        numbers from the engine.
       </figcaption>
     </figure>
   );

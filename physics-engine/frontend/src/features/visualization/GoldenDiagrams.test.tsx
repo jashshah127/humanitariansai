@@ -75,7 +75,11 @@ describe("incline diagram", () => {
     const a = 9.8 * 0.5;
     render(
       <Visualization
-        data={{ ...INCLINE_RES, knowns: { ...INCLINE_RES.knowns, mu: 0 }, answer: { a, v: Math.sqrt(8 * a) } }}
+        data={{
+          ...INCLINE_RES,
+          knowns: { ...INCLINE_RES.knowns, mu: 0 },
+          answer: { a, v: Math.sqrt(8 * a) },
+        }}
       />,
     );
     expect(screen.queryByTestId("force-f")).toBeNull();
@@ -89,7 +93,9 @@ describe("circuit diagram", () => {
     const img = screen.getByRole("img");
     expect(img).toHaveAccessibleName(/R1 = 4 Ω and R2 = 6 Ω in series/);
     expect(img).toHaveAccessibleName(/parallel with R3 = 12 Ω, across a 12 V source/);
-    expect(img).toHaveAccessibleName(/2\.2 A splits into 1\.2 A through R1 and R2, and 1 A through R3/);
+    expect(img).toHaveAccessibleName(
+      /2\.2 A splits into 1\.2 A through R1 and R2, and 1 A through R3/,
+    );
     for (const id of ["i-total", "i-branch1", "i-branch2"]) {
       expect(screen.getByTestId(id)).toBeInTheDocument();
     }
@@ -153,7 +159,9 @@ describe("disk diagram", () => {
   it("is chosen for the torque card and states the engine's numbers", () => {
     render(<Visualization data={DISK_RES} />);
     const img = screen.getByRole("img");
-    expect(img).toHaveAccessibleName(/mass 2 kg and radius 0\.25 m, with a constant torque of 0\.6 N·m/);
+    expect(img).toHaveAccessibleName(
+      /mass 2 kg and radius 0\.25 m, with a constant torque of 0\.6 N·m/,
+    );
     expect(img).toHaveAccessibleName(/inertia 0\.0625 kg·m², angular acceleration 9\.6 rad\/s²/);
     expect(img).toHaveAccessibleName(/grows steadily to 48 rad\/s after 5 s/);
   });
@@ -173,7 +181,9 @@ describe("loop diagram", () => {
 describe("Visualization", () => {
   it("draws nothing for a card with no diagram", () => {
     const { container } = render(
-      <Visualization data={{ ...RC_RES, card_id: "EM-ELEC-COULOMB", knowns: {}, answer: { F: 3.37 } }} />,
+      <Visualization
+        data={{ ...RC_RES, card_id: "EM-ELEC-COULOMB", knowns: {}, answer: { F: 3.37 } }}
+      />,
     );
     expect(container).toBeEmptyDOMElement();
   });

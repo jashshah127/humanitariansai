@@ -90,15 +90,13 @@ export function WireDiagram({ data }: { data: WireData }) {
         <span>
           <var>F</var> = {F} N
         </span>
-        <span>
-          angle between wire and field = {angle}°
-        </span>
+        <span>angle between wire and field = {angle}°</span>
       </p>
 
       <figcaption className={styles.caption}>
-        Drawn from the verified answer above. The problem does not say which way the current or
-        the field points, so the drawing shows no arrows. The force points out of the flat plane
-        that holds the wire and the field; which side depends on those directions.
+        Drawn from the verified answer above. The problem does not say which way the current or the
+        field points, so the drawing shows no arrows. The force points out of the flat plane that
+        holds the wire and the field; which side depends on those directions.
       </figcaption>
     </figure>
   );

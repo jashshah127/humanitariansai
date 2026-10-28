@@ -43,13 +43,13 @@ export const EXAMPLES: Example[] = [
     diagram: true,
     goldenId: "EM-006",
   },
-    {
+  {
     label: "Car speeding up",
     text: "A car starts from rest and accelerates uniformly at 2.5 m/s^2 for 12 s. Find (a) the car's final speed and (b) the distance it travels during this time.",
     diagram: true,
     goldenId: "MECH-001",
   },
-    {
+  {
     label: "Spring launch",
     text: "A 2 kg block compresses a spring (k=500 N/m) by 0.15 m on a frictionless surface. Find the block's speed when released.",
     diagram: true,
@@ -73,7 +73,7 @@ export const EXAMPLES: Example[] = [
     diagram: true,
     goldenId: "MECH-008",
   },
-    {
+  {
     label: "Spinning disk",
     text: "A solid disk (M=2 kg, R=0.25 m) at rest has a constant torque of 0.6 N*m applied. Find the angular acceleration and angular speed after 5 s.",
     diagram: true,

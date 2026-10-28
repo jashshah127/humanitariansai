@@ -18,9 +18,7 @@ export interface DiskData {
 /** The card's own equations: I = MR^2/2, tau = I*alpha, omega = alpha*t. */
 export function diskHolds(d: DiskData): boolean {
   return (
-    close(d.I, 0.5 * d.M * d.R ** 2) &&
-    close(d.tau, d.I * d.alpha) &&
-    close(d.omega, d.alpha * d.t)
+    close(d.I, 0.5 * d.M * d.R ** 2) && close(d.tau, d.I * d.alpha) && close(d.omega, d.alpha * d.t)
   );
 }
 

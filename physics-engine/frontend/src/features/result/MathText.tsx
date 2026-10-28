@@ -15,11 +15,7 @@ export function MathText({ text }: { text: string }) {
   return (
     <>
       {parts.map((part, i) =>
-        i % 2 === 0 ? (
-          <Fragment key={i}>{part}</Fragment>
-        ) : (
-          <MathFormula key={i} latex={part} />
-        ),
+        i % 2 === 0 ? <Fragment key={i}>{part}</Fragment> : <MathFormula key={i} latex={part} />,
       )}
     </>
   );

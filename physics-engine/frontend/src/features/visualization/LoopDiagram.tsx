@@ -33,7 +33,15 @@ export function LoopDiagram({ data }: { data: LoopData }) {
     <figure className={styles.figure}>
       <svg viewBox={`0 0 ${W} ${H}`} className={styles.svg} role="img" aria-label={summary}>
         {/* the region with the changing field */}
-        <rect className={styles.area} x={110} y={30} width={280} height={270} rx={6} data-testid="field-region" />
+        <rect
+          className={styles.area}
+          x={110}
+          y={30}
+          width={280}
+          height={270}
+          rx={6}
+          data-testid="field-region"
+        />
         <text className={styles.label} x={118} y={52}>
           field changing at {dBdt} T/s
         </text>
@@ -71,8 +79,8 @@ export function LoopDiagram({ data }: { data: LoopData }) {
 
       <figcaption className={styles.caption}>
         Drawn from the verified answer above. The loop is not to scale. The problem does not say
-        which way the field points, so the drawing shows no field symbols and no current
-        direction. The field is taken to pass straight through the loop.
+        which way the field points, so the drawing shows no field symbols and no current direction.
+        The field is taken to pass straight through the loop.
       </figcaption>
     </figure>
   );
