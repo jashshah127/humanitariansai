@@ -30,6 +30,7 @@ from variable_glossary import (
     normalize_parse,
     normalize_name,
     inject_constants,
+    inject_named_objects,
     GLOSSARY,
 )
 
@@ -403,6 +404,10 @@ def parse_problem(raw_problem, llm):
             knowns[canonical] = sp.Symbol(canonical)
 
     knowns, injected = inject_constants(knowns, unknowns, ALL_CARDS)
+    knowns, named, named_sources, named_report = inject_named_objects(
+        raw_problem, knowns, unknowns, ALL_CARDS, sources)
+    injected.update(named)  # marked "added" in grade mode, hidden from "Given" hints
+    sources.update(named_sources)  # e.g. q -> "proton"
 
     return {
         "knowns": knowns,
@@ -410,6 +415,7 @@ def parse_problem(raw_problem, llm):
         "topic_hint": payload.get("topic_hint"),
         "sources": sources,
         "injected": injected,
+        "named_objects": named_report,
         "symbolic_knowns": symbolic_names,
         "normalization": norm_report,
         "json_repaired": json_repaired,

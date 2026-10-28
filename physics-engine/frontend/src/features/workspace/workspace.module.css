@@ -48,8 +48,7 @@
   border-radius: var(--radius-sm);
   resize: vertical;
 }
-.textarea:focus-visible,
-.tokenInput:focus-visible {
+.textarea:focus-visible {
   outline: 2px solid transparent; /* still visible in Windows high-contrast mode */
   box-shadow: var(--focus-ring);
 }
@@ -150,26 +149,17 @@
   box-shadow: var(--focus-ring);
 }
 
-/* ---- Developer token (removed in Wk 4 when login lands) ---- */
-.token {
-  margin-top: var(--space-8);
+.account {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
-.token summary {
-  cursor: pointer;
-}
-.tokenInput {
-  display: block;
-  width: 100%;
-  margin-top: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  font: inherit;
-  font-family: var(--font-mono);
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+.accountEmail {
+  overflow-wrap: anywhere;
 }
 
 /* ---- Errors and results ---- */
@@ -206,4 +196,9 @@
   .controls {
     align-items: stretch;
   }
+}
+
+.exampleGroups {
+  display: grid;
+  gap: var(--space-2);
 }

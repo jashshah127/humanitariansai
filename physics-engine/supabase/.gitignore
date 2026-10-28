@@ -1,0 +1,6 @@
+# Supabase CLI local state and caches -- never commit
+.branches
+.temp
+.env
+# Studio scratch queries saved by the local dashboard
+snippets/
