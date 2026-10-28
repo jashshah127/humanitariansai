@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
-import { MathText } from "MathText.tsx";
+import { MathText } from "./MathText.tsx";
 
 describe("MathText", () => {
   it("renders the $...$ parts as math and keeps the rest as text", () => {

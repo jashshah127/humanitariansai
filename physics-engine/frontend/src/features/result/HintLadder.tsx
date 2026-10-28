@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "../../design/components/Button.tsx";
+import { MathText } from "./MathText.tsx";
 import styles from "./result.module.css";
 
 // Contract: an ordered ladder, each rung revealing more, answer last. One at a time.
@@ -16,7 +17,9 @@ export function HintLadder({ hints }: { hints: string[] }) {
       </h2>
       <ol className={styles.hints}>
         {hints.slice(0, shown).map((hint, i) => (
-          <li key={i}>{hint}</li>
+                    <li key={i}>
+            <MathText text={hint} />
+          </li>
         ))}
       </ol>
       {hasMore && (
