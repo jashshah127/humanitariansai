@@ -1,0 +1,22 @@
+timestamp_utc,url,kind,http_status,latency_ms,ok,detail
+2026-10-29T00:19:56+00:00,https://physics-engine-staging.onrender.com,health,200,320,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T00:22:45+00:00,https://physics-engine-staging.onrender.com,health,200,239,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T00:53:17+00:00,https://physics-engine-staging.onrender.com,health,200,31443,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T01:23:48+00:00,https://physics-engine-staging.onrender.com,health,200,31288,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T01:54:39+00:00,https://physics-engine-staging.onrender.com,health,200,51292,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T02:25:01+00:00,https://physics-engine-staging.onrender.com,health,200,21402,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T02:55:33+00:00,https://physics-engine-staging.onrender.com,health,200,32328,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T03:26:05+00:00,https://physics-engine-staging.onrender.com,health,200,32299,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T03:56:38+00:00,https://physics-engine-staging.onrender.com,health,200,32344,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T04:26:59+00:00,https://physics-engine-staging.onrender.com,health,200,21310,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T04:57:30+00:00,https://physics-engine-staging.onrender.com,health,200,31268,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T05:28:02+00:00,https://physics-engine-staging.onrender.com,health,200,31279,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T05:58:33+00:00,https://physics-engine-staging.onrender.com,health,200,31308,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T06:29:04+00:00,https://physics-engine-staging.onrender.com,health,200,31273,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T06:59:35+00:00,https://physics-engine-staging.onrender.com,health,200,31294,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T07:30:07+00:00,https://physics-engine-staging.onrender.com,health,200,31405,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T08:00:39+00:00,https://physics-engine-staging.onrender.com,health,200,32474,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T08:31:12+00:00,https://physics-engine-staging.onrender.com,health,200,32432,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T09:01:44+00:00,https://physics-engine-staging.onrender.com,health,200,32316,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T09:32:15+00:00,https://physics-engine-staging.onrender.com,health,200,31307,1,provider=GeminiLLM cards=31 frontend=react
+2026-10-29T10:03:07+00:00,https://physics-engine-staging.onrender.com,health,200,51259,1,provider=GeminiLLM cards=31 frontend=react
