@@ -158,9 +158,20 @@ def compare(engine_values, ground_truth_raw, answer_type=None):
     if all(n is None for n in gt_nums):
         return Verdict.NOT_COMPARABLE, f"no numeric value readable from {body[:60]!r}"
 
+    def _num(v):
+        """An engine value as a float, or None when it is not a plain number. The engine
+        can hand back a symbolic expression or text for a problem it answered
+        symbolically; that must be reported as 'not comparable', never crash the run."""
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
     gt_nums = [n for n in gt_nums if n is not None]
-    eng = [v for v in engine_values if v is not None]
+    eng = [x for x in (_num(v) for v in engine_values) if x is not None]
     if not eng:
+        if any(v is not None for v in engine_values):
+            return Verdict.NOT_COMPARABLE, "engine gave a non-numeric value (symbolic or text)"
         return Verdict.MISMATCH, "engine produced no value"
 
     # Any-order matching: the engine may return quantities in a different order than

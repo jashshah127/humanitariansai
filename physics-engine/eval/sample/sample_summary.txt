@@ -1,0 +1,33 @@
+Seed 2026. Attemptable problems: 921.
+
+Attemptable by topic and stratum:
+stratum               numeric  symbolic  All
+topic                                       
+Central Force Motion        8        45   53
+Circuit Analysis           24        14   38
+Electrostatics             22       110  132
+Fluid Mechanics            19        46   65
+Magstatics                 14       111  125
+Particle Dynamics          45       195  240
+Rigid-Body Dynamics        25       103  128
+Vibrations and Waves       77        63  140
+All                       234       687  921
+
+Pilot: 100 problems
+stratum               numeric  symbolic  All
+topic                                       
+Central Force Motion        1         5    6
+Circuit Analysis            3         2    5
+Electrostatics              2        12   14
+Fluid Mechanics             2         5    7
+Magstatics                  2        12   14
+Particle Dynamics           5        20   25
+Rigid-Body Dynamics         3        11   14
+Vibrations and Waves        8         7   15
+All                        26        74  100
+
+Full run batches:
+  ids_full_01.txt: 250 problems (234 numeric, 16 symbolic)
+  ids_full_02.txt: 250 problems (0 numeric, 250 symbolic)
+  ids_full_03.txt: 250 problems (0 numeric, 250 symbolic)
+  ids_full_04.txt: 171 problems (0 numeric, 171 symbolic)
