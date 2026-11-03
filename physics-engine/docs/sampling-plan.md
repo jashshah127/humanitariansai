@@ -1,7 +1,7 @@
 # Sampling Plan for the Parse-Accuracy Evaluation
 
 **Author:** Harsh Gujarathi · **Plan item:** Wk 3, stratified sampling plan
-**Status:** Draft v1, Oct 27, 2026 · **Audience:** Sri, Nik, Jash
+**Status:** Draft v2, Oct 28, 2026 (v1 written Oct 27) · **Audience:** Sri, Nik, Jash
 
 ## 1. What this plan is for
 
@@ -63,9 +63,9 @@ By topic (attemptable, of which numeric):
 
 Within each topic, the pilot is split between the numeric and symbolic strata in proportion, with at least one of each where both exist. Problems are drawn at random with seed 2026, so the same files always give the same list.
 
-**The pilot is run twice** to measure run-to-run variation. The Gemini parser uses temperature 0 but identical output is not guaranteed.
+**Run-to-run variation** was measured on the 28 problems that appear in both the pilot and batch 1, instead of running the pilot twice (89% had the same outcome). The Gemini parser uses temperature 0 but identical output is not guaranteed.
 
-**The full run goes in batches of 250**, numeric problems first, so a quota cut-off still leaves the most valuable results. The runner saves what it has and stops after three failed model calls in a row.
+**The full run was planned in batches of 250**, numeric problems first, so a quota cut-off still leaves the most valuable results. The runner saves what it has and stops after three failed model calls in a row. Only batch 1 was run (all 234 numeric problems plus 16 symbolic); see section 9.
 
 ## 4. What is reported
 
@@ -85,7 +85,7 @@ Also reported: ambiguous routes, solve errors, and parse failures split into API
 - **Numeric stratum (234):** this is the whole stratum, so there is no sampling error. The model's own run-to-run variation is separate and is measured by the repeated pilot.
 - **Pilot (100 of 921):** an overall rate has a margin of about ±9 points at 95% confidence. Per-topic pilot estimates (5 to 25 problems) are about ±20 points or wider, so they are indicative only.
 - **Full run:** per-topic rates are exact counts of what happened on that run, not estimates.
-- **Model:** the parser's default model is `gemini-3.6-flash`. The baseline in `baseline-methodology.md` used `gemini-flash-lite-latest`, so the two should not be compared as one model.
+- **Model:** the parser's default model, `gemini-3.6-flash`, allows 5 requests a minute and 20 a day on the free tier (from the project's quota page), so it could not be used at this scale. Every run used `gemini-flash-lite-latest` (15 a minute, 500 a day), the same model as the baseline in `baseline-methodology.md`. Results describe that model.
 
 ## 6. Procedure
 
@@ -95,12 +95,11 @@ From `physics-engine/`, with the two `ugphysics_*.csv` files in `eval/`:
 python eval/make_sample_ids.py
 python eval/run_sample.py --ids eval/sample/ids_pilot.txt --dry
 $env:GEMINI_API_KEY="<your key>"
-python eval/run_sample.py --ids eval/sample/ids_pilot.txt --out benchmark_pilot_run1.json
-python eval/run_sample.py --ids eval/sample/ids_pilot.txt --out benchmark_pilot_run2.json
-python eval/run_sample.py --ids eval/sample/ids_full_01.txt --out benchmark_full_01.json
+python eval/run_sample.py --ids eval/sample/ids_pilot.txt --out benchmark_pilot_run1.json --model gemini-flash-lite-latest
+python eval/run_sample.py --ids eval/sample/ids_full_01.txt --out benchmark_full_01.json --model gemini-flash-lite-latest
 ```
 
-then `ids_full_02.txt` to `ids_full_04.txt`, with outputs named `benchmark_full_02.json` and so on. The scripts are `eval/make_sample_ids.py` (writes the ID lists) and `eval/run_sample.py` (runs a list through the existing `run_benchmark.full_run` unchanged). Each result file records which ID list produced it.
+If a run stops early, `eval/combine_results.py` merges the files and `eval/inspect_outcome.py` and `eval/missing_knowns.py` read them. Batches `ids_full_02.txt` to `ids_full_04.txt` (687 symbolic problems minus those already run) were not run. The scripts are `eval/make_sample_ids.py` (writes the ID lists) and `eval/run_sample.py` (runs a list through the existing `run_benchmark.full_run` unchanged). Each result file records which ID list produced it.
 
 ## 7. Data handling
 
@@ -113,6 +112,19 @@ then `ids_full_02.txt` to `ids_full_04.txt`, with outputs named `benchmark_full_
 
 - Parse accuracy here is indirect. Hand-labelling about 20 parses is needed to check the three signals.
 - The symbolic stratum has no accuracy until the antlr4 comparison path is validated (Wk 5), and should be re-run then.
-- The free daily quota (about 1,500 requests per day was assumed in the parser's notes) has not been checked against the current model. The pilot twice plus the full run is about 1,120 calls, before retries.
+- The version of this plan written on Oct 27 assumed about 1,500 requests a day, taken from a comment in the parser's code. The quota page showed 500 a day for Flash Lite and 20 for the default model. The page also showed no usage although the key had been used, so the limits are taken from the page and were not confirmed by reaching them.
 - Problems with no readable number (258) and true/false or multiple-choice problems (47) are outside what this evaluation measures.
 - The numeric stratum is small for some topics (Magstatics 14, Central Force Motion 8), so per-topic accuracy there rests on few problems.
+
+## 9. What was actually run
+
+| Run | Problems | Calls | Result |
+|---|---|---|---|
+| Pilot | 100 (26 numeric, 74 symbolic) | 100 | No API failures; 1 answered (wrong) |
+| Batch 1, part 1 | 139 of 250 | 139 | Stopped when the scorer crashed on a non-numeric engine value |
+| Batch 1, part 2 | the other 111 | 111 | No API failures; 0 answered |
+
+- The crash was a bug in `eval/answer_match.py`: a text value from the engine reached a numeric comparison. It is fixed and committed, and such values are now reported as not comparable.
+- About 350 requests were used against the 500-a-day limit.
+- Not run: the pilot a second time, and batches 2 to 4. The symbolic stratum cannot be scored for accuracy until the antlr4 path is validated, so more symbolic problems would only refine the mix of decline reasons.
+- Merged batch 1: no API failures and no parse failures; 5 problems answered, 2 matched and 3 wrong. Details are in `findings.md`.
