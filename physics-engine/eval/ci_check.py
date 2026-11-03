@@ -280,6 +280,72 @@ def server_auth_paths():
     return True, "minted + Supabase tokens accepted; bad -> 401; Supabase down -> 503; minted never calls Supabase"
 
 
+def me_reports_role():
+    """GET /me must report who called and their role: a Supabase user's role comes from
+    their own profile; a minted (operator) token has no role; a failed lookup is not a 'user'."""
+    sys.path.insert(0, os.path.join(HERE, ".."))
+    import server
+    import supabase_auth
+    from jwt_auth import create_token
+
+    class FakeHandler:
+        def __init__(self, auth):
+            self.headers = {"Authorization": auth}
+            self.status = None
+
+        def _send(self, code, payload):
+            self.status = code
+
+    profile_reply = {"value": (200, b'[{"role": "admin"}]')}
+
+    def fake_fetch(url, headers, timeout):
+        if url.endswith("/auth/v1/user"):
+            return 200, b'{"id": "u1", "email": "admin@test.dev"}'
+        if "/rest/v1/profiles" in url:
+            r = profile_reply["value"]
+            if isinstance(r, Exception):
+                raise r
+            return r
+        return 404, b"{}"
+
+    def me(auth):
+        h = FakeHandler(auth)
+        if not server._authenticate(h):
+            return ("status", h.status)
+        return server.api_me(h.caller)
+
+    real_fetch, supabase_auth._urllib_fetch = supabase_auth._urllib_fetch, fake_fetch
+    try:
+        with _EnvPatch(JWT_SECRET="ci-secret", SUPABASE_URL="http://supabase.test",
+                       SUPABASE_PUBLISHABLE_KEY="pk"):
+            got_admin = me("Bearer supabase-token")
+            profile_reply["value"] = (200, b'[{"role": "user"}]')
+            got_user = me("Bearer supabase-token")
+            profile_reply["value"] = (200, b"[]")
+            got_none = me("Bearer supabase-token")
+            got_minted = me("Bearer " + create_token({"sub": "ci"}, expires_in=60))
+            profile_reply["value"] = TimeoutError()
+            try:
+                me("Bearer supabase-token")
+                got_down = "no error"
+            except supabase_auth.AuthUnavailable:
+                got_down = "unavailable"
+    finally:
+        supabase_auth._urllib_fetch = real_fetch
+
+    checks = {
+        "admin": (got_admin, {"kind": "supabase", "id": "u1", "email": "admin@test.dev", "role": "admin"}),
+        "user": (got_user.get("role") if isinstance(got_user, dict) else got_user, "user"),
+        "no profile": (got_none.get("role") if isinstance(got_none, dict) else got_none, None),
+        "minted": (got_minted, {"kind": "minted", "sub": "ci", "role": None}),
+        "lookup down": (got_down, "unavailable"),
+    }
+    wrong = {k: got for k, (got, want) in checks.items() if got != want}
+    if wrong:
+        return False, f"wrong /me result for: {wrong}"
+    return True, "admin/user role from own profile; minted -> no role; lookup failure -> unavailable"
+
+
 def identity_scoping_enforced():
     from event_log import EventLog, ScopeViolation
     log = EventLog()
@@ -324,6 +390,7 @@ if __name__ == "__main__":
     print("\nAuth invariants")
     check("Supabase token rules", supabase_token_rules)
     check("server auth paths", server_auth_paths)
+    check("GET /me reports role", me_reports_role)
 
     print()
     if failures:

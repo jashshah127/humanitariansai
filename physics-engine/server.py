@@ -27,7 +27,8 @@ AUTH: /solve, /parse and /grade require `Authorization: Bearer <token>`, where t
 either a Supabase session token (users sign up and sign in with Supabase Auth directly from
 the browser; this server only checks the token -- see supabase_auth.py) or an operator-
 minted token from mint_token.py (see jwt_auth.py). There is still no token-issuing endpoint
-here, deliberately. /health, /cards, /stats stay open: they leak nothing sensitive and gating
+here, deliberately. GET /me (also token-gated) reports who the caller is and, for Supabase
+users, their role. /health, /cards, /stats stay open: they leak nothing sensitive and gating
 them would break the ability to sanity-check a deploy without already holding a token.
 
 WHAT IS AND IS NOT SAFE HERE: nothing is stored server-side. A minted token proves someone
@@ -147,21 +148,27 @@ def _authenticate(handler):
       2. a Supabase session token (a signed-in user) -- checked by supabase_auth, only
          when SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY are set.
     A refused token is a 401. Supabase being unreachable is a 503 -- the caller's session
-    may be fine, so telling them it isn't would be wrong."""
+    may be fine, so telling them it isn't would be wrong.
+
+    On success, who called is left on `handler.caller` for endpoints that need it:
+    {"kind": "minted", "sub": ...} or {"kind": "supabase", "id": ..., "email": ...}, plus
+    the raw token (used only to look up the role -- never logged or returned)."""
     try:
         token = bearer_token_from_header(handler.headers.get("Authorization", ""))
     except TokenError as e:
         handler._send(401, {"error": f"unauthorized: {e}"})
         return False
     try:
-        verify_token(token)
+        claims = verify_token(token)
+        handler.caller = {"kind": "minted", "sub": claims.get("sub"), "token": token}
         return True
     except TokenError as e:
         if not supabase_auth.configured():
             handler._send(401, {"error": f"unauthorized: {e}"})
             return False
     try:
-        supabase_auth.verify_supabase_token(token)
+        user = supabase_auth.verify_supabase_token(token)
+        handler.caller = {"kind": "supabase", **user, "token": token}
         return True
     except TokenError as e:
         handler._send(401, {"error": f"unauthorized: {e}"})
@@ -170,6 +177,16 @@ def _authenticate(handler):
         print(f"[auth] Supabase check failed: {e}", file=sys.stderr)
         handler._send(503, {"error": "Sign-in can't be checked right now. Try again in a minute."})
         return False
+
+
+def api_me(caller):
+    """GET /me: who the caller is and their role, so the frontend can decide what to show
+    (e.g. admin features). Minted tokens are operator tokens with no Supabase account, so
+    they have no role. Raises supabase_auth.AuthUnavailable if the role can't be looked up."""
+    if caller["kind"] == "minted":
+        return {"kind": "minted", "sub": caller["sub"], "role": None}
+    return {"kind": "supabase", "id": caller["id"], "email": caller["email"],
+            "role": supabase_auth.fetch_role(caller["token"])}
 
 
 class BadRequest(Exception):
@@ -416,6 +433,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, api_cards())
             if path == "/stats":
                 return self._send(200, api_stats())
+            if path == "/me":
+                if not _authenticate(self):
+                    return
+                try:
+                    return self._send(200, api_me(self.caller))
+                except supabase_auth.AuthUnavailable as e:
+                    print(f"[auth] role lookup failed: {e}", file=sys.stderr)
+                    return self._send(503, {"error": "Your role can't be checked right now. Try again in a minute."})
             if path == "/" and not static_files.built():
                 return self._send(200, INDEX, "text/html; charset=utf-8")
             hit = static_files.resolve(path)     # "/" -> dist/index.html when built
