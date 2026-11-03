@@ -14,8 +14,13 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python3 server.py
     healthCheckPath: /health
+    autoDeployTrigger: checksPass
     envVars:
       - key: GEMINI_API_KEY
         sync: false        # set in the dashboard, never committed
       - key: JWT_SECRET
+        sync: false        # set in the dashboard, never committed
+      - key: SUPABASE_URL
+        sync: false        # set in the dashboard, never committed
+      - key: SUPABASE_PUBLISHABLE_KEY
         sync: false        # set in the dashboard, never committed
