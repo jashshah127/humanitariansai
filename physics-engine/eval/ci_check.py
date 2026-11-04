@@ -438,10 +438,34 @@ def classifier_model_failures():
         }
         res, calls = run({"m1": [(400, b"")], "m2": [ok]})
         cases["400 stops at once"] = ((res.startswith("error"), calls), (True, ["m1"]))
+
+        # Circuit breaker: one llm, several calls, a fake clock.
+        now = {"t": 0.0}
+        calls = []
+
+        def post(url, body, headers, timeout):
+            model = url.split("/models/")[1].split(":")[0]
+            calls.append(model)
+            if model == "m1":
+                raise TimeoutError()          # m1 never answers
+            return ok
+
+        llm = GeminiClassifierLLM(models=["m1", "m2"], waits=(0, 0), post=post, sleep=lambda s: None,
+                                  cooldown=300, clock=lambda: now["t"])
+        llm("p", {})
+        first = list(calls); calls.clear()
+        llm("p", {})                           # m1 failed recently -> straight to m2
+        second = list(calls); calls.clear()
+        now["t"] = 301                         # cooldown over -> m1 gets another chance
+        llm("p", {})
+        third = list(calls)
+        cases["circuit: 1st call retries m1 then m2"] = (first, ["m1", "m1", "m1", "m2"])
+        cases["circuit: 2nd call skips m1"] = (second, ["m2"])
+        cases["circuit: after cooldown, m1 retried"] = (third[0], "m1")
     wrong = {k: got for k, (got, want) in cases.items() if got != want}
     if wrong:
         return False, f"wrong for: {wrong}"
-    return True, "503/timeout retried; 429/404 skip model; other errors stop"
+    return True, "503/timeout retried; 429/404 skip model; other errors stop; failed model skipped during cooldown"
 
 
 def identity_scoping_enforced():

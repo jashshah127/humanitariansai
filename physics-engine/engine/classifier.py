@@ -112,12 +112,22 @@ class GeminiClassifierLLM:
       429 (quota used)                 -> next model at once; retrying burns more quota
       404 (model retired)              -> next model at once
       any other error                  -> stop: the request itself is wrong
+
+    CIRCUIT BREAKER: a model that just failed (retries used up, or 429) is skipped for
+    `cooldown` seconds on later calls, and a retired model (404) for good. Without this, a
+    model that times out on every request costs every later problem its full retry budget
+    -- measured: about 1.5 minutes per problem, which stalled a 29-problem run for 40+ min.
     """
 
     def __init__(self, models=("gemini-3.8-flash", "gemini-3.6-flash"), waits=(2, 5),
-                 timeout=30, post=None, sleep=time.sleep):
+                 timeout=30, post=None, sleep=time.sleep, cooldown=300, clock=time.monotonic):
         self.models, self.waits, self.timeout = list(models), waits, timeout
         self._post, self._sleep = post or self._urllib_post, sleep
+        self.cooldown, self._clock = cooldown, clock
+        self._skip_until = {}          # model -> time when it may be tried again
+
+    def _open_circuit(self, model, forever=False):
+        self._skip_until[model] = float("inf") if forever else self._clock() + self.cooldown
 
     @staticmethod
     def _urllib_post(url, body, headers, timeout):
@@ -139,6 +149,9 @@ class GeminiClassifierLLM:
         headers = {"Content-Type": "application/json", "X-goog-api-key": key}
         errors = []
         for model in self.models:
+            if self._clock() < self._skip_until.get(model, 0):
+                errors.append(f"{model}: skipped (failed recently)")
+                continue
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
             for attempt in range(len(self.waits) + 1):
                 try:
@@ -153,6 +166,7 @@ class GeminiClassifierLLM:
                         break
                 if status in (404, 429):
                     errors.append(f"{model}: {status}")
+                    self._open_circuit(model, forever=(status == 404))
                     break
                 if status is not None and status != 503:
                     raise ClassifyError(f"{model}: HTTP {status} (not retryable)")
@@ -160,6 +174,7 @@ class GeminiClassifierLLM:
                     self._sleep(self.waits[attempt])
             else:
                 errors.append(f"{model}: unavailable after retries")
+                self._open_circuit(model)
         raise ClassifyError("all models failed: " + "; ".join(errors))
 
 
