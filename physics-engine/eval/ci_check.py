@@ -468,6 +468,35 @@ def classifier_model_failures():
     return True, "503/timeout retried; 429/404 skip model; other errors stop; failed model skipped during cooldown"
 
 
+def redaction_rules():
+    """Personal details are replaced and counted; physics numbers are never touched;
+    a second pass changes nothing."""
+    from redact import redact
+    pii = {
+        "Email jane.doe+hw@husky.neu.edu now": ("Email [EMAIL] now", 1),
+        "See https://drive.google.com/d/abc?x=1, then": ("See [LINK], then", 1),
+        "Call 617-555-1234.": ("Call [PHONE].", 1),
+        "Call (617) 555-1234": ("Call [PHONE]", 1),
+        "Call +1 617 555 1234": ("Call [PHONE]", 1),
+        "My NUID is 002123456.": ("My NUID is [ID].", 1),
+        "SSN 123-45-6789": ("SSN [ID]", 1),
+        "I'm jane@uni.edu, NUID 002123456, cell 617.555.1234: a 2 kg block":
+            ("I'm [EMAIL], NUID [ID], cell [PHONE]: a 2 kg block", 3),
+    }
+    physics = [
+        "A 1500-kg car accelerates at 9.8 m/s^2 for 12.5 s.",
+        "c = 300000000 m/s and G = 6.67e-11 N m^2/kg^2",
+        "Charges q1 = +3.0e-6 C and q2 = -2.0e-6 C, 0.050 m apart; range 1.2-3.4 m.",
+        "Voltage 120 V, 60 Hz, 2023-11-03 lab, resistors 100 200 3000 ohm",
+    ]
+    wrong = {s: redact(s) for s, want in pii.items() if redact(s) != want}
+    wrong.update({s: redact(s) for s in physics if redact(s) != (s, 0)})
+    wrong.update({s: "second pass changed it" for s, (out, _) in pii.items() if redact(out) != (out, 0)})
+    if wrong:
+        return False, f"wrong for: {wrong}"
+    return True, "emails/links/phones/IDs replaced and counted; physics numbers untouched; second pass is a no-op"
+
+
 def identity_scoping_enforced():
     from event_log import EventLog, ScopeViolation
     log = EventLog()
@@ -517,6 +546,8 @@ if __name__ == "__main__":
     check("classifier labels match the topics table", classifier_labels_match_db)
     check("classifier rules", classifier_rules)
     check("classifier model failures", classifier_model_failures)
+    print("\nLogging invariants")
+    check("redaction rules", redaction_rules)
 
     print()
     if failures:
