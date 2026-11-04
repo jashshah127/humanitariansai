@@ -180,6 +180,7 @@ class BadRequest(Exception):
 # different quantities. Keyed by the matched card's unit, which says which one it is.
 _AMBIGUOUS_LABELS = {
     "T": {"N": "tension in the string", "s": "period"},
+    "I": {"kg*m^2": "moment of inertia", "A": "current in the wire"},
 }
 
 _NOT_GRADABLE = {
