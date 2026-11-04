@@ -25,6 +25,7 @@ browser, never in the repo. Without it, logging is simply off.
 import json
 import os
 import queue
+import sys
 import threading
 import traceback
 import urllib.error
@@ -114,8 +115,9 @@ def log_and_tag(query, result, store, llm=None):
     row_id = store.insert(row)
     try:
         c = classify(clean, solution=result.get("trace"), llm=llm)
-    except ClassifyError:
-        return "untagged"        # counted, just not tagged; a later run can fill it in
+    except ClassifyError as e:   # counted, just not tagged; a later run can fill it in
+        print(f"[problem_log] row {row_id} left untagged: {e}", file=sys.stderr)  # no text
+        return "untagged"
     store.update(row_id, tag_fields(c))
     return "tagged"
 
@@ -150,3 +152,7 @@ class ProblemLogger:
     def wait(self):
         """Block until every submitted entry is processed (tests and shutdown only)."""
         self._q.join()
+
+    def pending(self):
+        """Entries queued or in progress -- lets an operator see the worker has caught up."""
+        return self._q.unfinished_tasks

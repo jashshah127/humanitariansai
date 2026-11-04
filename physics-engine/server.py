@@ -19,6 +19,7 @@ Deploy free (Render / Railway / Fly):
     start:  python3 server.py
     env:    GEMINI_API_KEY, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, JWT_SECRET, PORT
             optional SUPABASE_SECRET_KEY -- turns on problem logging (below)
+            optional GEMINI_PARSE_MODEL, GEMINI_TAG_MODELS -- override the pinned models
 
 FRONTEND: if frontend/dist/ exists (built with `npm run build` in frontend/), it is
 served at / and its asset paths. If it does not exist, the inline INDEX page below is
@@ -64,6 +65,7 @@ from formula_kb import ALL_CARDS
 from jwt_auth import verify_token, bearer_token_from_header, TokenError
 import supabase_auth
 import problem_log
+from classifier import GeminiClassifierLLM
 from rate_limit import RateLimiter
 import static_files
 
@@ -78,8 +80,15 @@ _gemini_limiter = RateLimiter(rate_per_minute=8, burst=8)
 
 _log = EventLog()
 
+def _tag_llm():
+    """The tagger's model chain: GEMINI_TAG_MODELS (comma-separated) if set, else the
+    classifier's default. Pinned names only -- '-latest' aliases change without notice."""
+    models = [m.strip() for m in os.environ.get("GEMINI_TAG_MODELS", "").split(",") if m.strip()]
+    return GeminiClassifierLLM(models=models) if models else GeminiClassifierLLM()
+
+
 # Off unless the server holds the Supabase secret key (problem_log.py explains why).
-_problem_log = (problem_log.ProblemLogger(problem_log.SupabaseLogStore())
+_problem_log = (problem_log.ProblemLogger(problem_log.SupabaseLogStore(), llm=_tag_llm())
                 if problem_log.configured() else None)
 
 API_GET = ("/health", "/cards", "/stats")
@@ -87,10 +96,12 @@ API_GET = ("/health", "/cards", "/stats")
 
 def _llm():
     """Use every provider that has a key, in order: Gemini, then Claude.
-    Falls back to the next one if a call fails. Ollama only if no keys are set."""
+    Falls back to the next one if a call fails. Ollama only if no keys are set.
+    GEMINI_PARSE_MODEL overrides the Gemini model (e.g. when the default's quota is used up)."""
     chain = []
     if os.environ.get("GEMINI_API_KEY"):
-        chain.append(GeminiLLM())
+        model = os.environ.get("GEMINI_PARSE_MODEL")
+        chain.append(GeminiLLM(model=model) if model else GeminiLLM())
     if os.environ.get("ANTHROPIC_API_KEY"):
         chain.append(ClaudeLLM())
     if not chain:
@@ -113,8 +124,12 @@ def api_cards():
 
 
 def api_stats():
-    return {"routes": _log.route_split(), "latency": _log.latency_summary(),
-            "coverage_gaps": len(_log.coverage_gaps())}
+    stats = {"routes": _log.route_split(), "latency": _log.latency_summary(),
+             "coverage_gaps": len(_log.coverage_gaps())}
+    if _problem_log:         # counts only -- no problem text
+        stats["problem_log"] = {"pending": _problem_log.pending(), "dropped": _problem_log.dropped,
+                                "outcomes": dict(_problem_log.outcomes)}
+    return stats
 
 
 def api_solve(body):
@@ -533,8 +548,8 @@ def main():
         print("WARNING: no auth configured. Every /solve, /parse and /grade call will 401.")
         print("         Set SUPABASE_URL + SUPABASE_PUBLISHABLE_KEY for Supabase sign-in,")
         print("         or JWT_SECRET and mint a token with: python3 mint_token.py --sub you")
-    print("Problem log: on (Supabase problems_log)" if _problem_log
-          else "Problem log: off (set SUPABASE_SECRET_KEY to store and tag solved problems)")
+    print(f"Problem log: on (Supabase problems_log; tag models: {', '.join(_problem_log.llm.models)})"
+          if _problem_log else "Problem log: off (set SUPABASE_SECRET_KEY to store and tag solved problems)")
     print(f"Listening on http://localhost:{port}")
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
 

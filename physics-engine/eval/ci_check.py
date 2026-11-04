@@ -497,6 +497,26 @@ def redaction_rules():
     return True, "emails/links/phones/IDs replaced and counted; physics numbers untouched; second pass is a no-op"
 
 
+def model_settings():
+    """GEMINI_PARSE_MODEL / GEMINI_TAG_MODELS override the pinned models; unset keeps
+    the defaults unchanged."""
+    sys.path.insert(0, os.path.join(HERE, ".."))
+    import server
+    from parse import GeminiLLM
+    from classifier import GeminiClassifierLLM
+    with _EnvPatch(GEMINI_API_KEY="k", ANTHROPIC_API_KEY=None, GEMINI_PARSE_MODEL=None, GEMINI_TAG_MODELS=None):
+        cases = {"parse default": (server._llm().model, GeminiLLM().model),
+                 "tag default": (server._tag_llm().models, GeminiClassifierLLM().models)}
+    with _EnvPatch(GEMINI_API_KEY="k", ANTHROPIC_API_KEY=None, GEMINI_PARSE_MODEL="p-model",
+                   GEMINI_TAG_MODELS=" t1, t2 ,"):
+        cases["parse override"] = (server._llm().model, "p-model")
+        cases["tag override"] = (server._tag_llm().models, ["t1", "t2"])
+    wrong = {k: got for k, (got, want) in cases.items() if got != want}
+    if wrong:
+        return False, f"wrong for: {wrong}"
+    return True, "overrides apply when set; defaults unchanged when unset"
+
+
 def problem_logging_rules():
     """Each solve is stored cleaned and untagged first, then tagged; a model failure leaves
     it untagged; the worker survives errors and drops (never blocks) when its queue is full;
@@ -665,6 +685,7 @@ if __name__ == "__main__":
     print("\nLogging invariants")
     check("redaction rules", redaction_rules)
     check("problem logging", problem_logging_rules)
+    check("model settings", model_settings)
 
     print()
     if failures:
