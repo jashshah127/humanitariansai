@@ -346,6 +346,104 @@ def me_reports_role():
     return True, "admin/user role from own profile; minted -> no role; lookup failure -> unavailable"
 
 
+def classifier_labels_match_db():
+    """The classifier's allowed (topic, subtopic) pairs must be exactly the rows the
+    problems_log migration seeds into public.topics -- otherwise tags fail the foreign key."""
+    import re
+    from classifier import TOPIC_PAIRS
+    path = os.path.join(HERE, "..", "supabase", "migrations", "20261022164924_problems_log.sql")
+    seeded = set(re.findall(r"\('([^']+)', '([^']+)'\)", open(path).read()))
+    ours = set(TOPIC_PAIRS)
+    if ours != seeded:
+        return False, f"only in classifier: {sorted(ours - seeded)}; only in db: {sorted(seeded - ours)}"
+    return True, f"{len(ours)} pairs, identical to the topics table seed"
+
+
+def classifier_rules():
+    """Card label wins; disagreement, Other and invalid pairs are flagged; a failed model
+    still yields the card's topic; no card + failed model -> ClassifyError."""
+    import json
+    from classifier import classify, ClassifyError
+    from pipeline import solve_physics_problem
+    atwood = solve_physics_problem("c", "atwood", {"m1": 4, "m2": 6, "g": 9.8}, ["a", "T"],
+                                   topic_hint="Mechanics")
+
+    def model(**tags):
+        reply = {"grade_level": "intro_undergrad", "difficulty": "easy", "confidence": 0.9, **tags}
+        return lambda prompt, schema: (json.dumps(reply), "fake-model")
+
+    def failing(prompt, schema):
+        raise ClassifyError("down")
+
+    cases = {}
+    r = classify("pulley", atwood, model(topic="Mechanics", subtopic="Dynamics"))
+    cases["card, model agrees"] = ((r.topic, r.subtopic, r.source, r.needs_review, r.grade_level),
+                                   ("Mechanics", "Dynamics", "engine_card", False, "intro_undergrad"))
+    r = classify("pulley", atwood, model(topic="E&M", subtopic="Circuits"))
+    cases["card, model disagrees"] = ((r.topic, r.subtopic, r.needs_review), ("Mechanics", "Dynamics", True))
+    r = classify("pulley", atwood, failing)
+    cases["card, model down"] = ((r.topic, r.grade_level, r.source), ("Mechanics", None, "engine_card"))
+    r = classify("charged ball", None, model(topic="E&M", subtopic="Electrostatics"))
+    cases["no card, valid pair"] = ((r.topic, r.subtopic, r.source, r.needs_review),
+                                    ("E&M", "Electrostatics", "llm", False))
+    r = classify("hydrogen", None, model(topic="Other", subtopic="Other"))
+    cases["no card, Other"] = ((r.topic, r.needs_review), ("Other", True))
+    r = classify("x", None, model(topic="Mechanics", subtopic="Circuits"))
+    cases["no card, invalid pair"] = ((r.topic, r.subtopic, r.needs_review), ("Other", "Other", True))
+    r = classify("x", None, model(topic="Mechanics", subtopic="Kinematics", grade_level="phd"))
+    cases["unknown grade dropped"] = (r.grade_level, None)
+    try:
+        classify("x", None, failing)
+        cases["no card, model down"] = ("no error", "ClassifyError")
+    except ClassifyError:
+        cases["no card, model down"] = ("ClassifyError", "ClassifyError")
+
+    wrong = {k: got for k, (got, want) in cases.items() if got != want}
+    if wrong:
+        return False, f"wrong for: {wrong}"
+    return True, "card label wins; disagreement/Other/invalid pair flagged; failures handled"
+
+
+def classifier_model_failures():
+    """Retry 503 and timeouts, skip a model on 429/404, stop on other errors -- offline."""
+    import json
+    from classifier import GeminiClassifierLLM, ClassifyError
+    ok = (200, json.dumps({"candidates": [{"content": {"parts": [{"text": "{}"}]}}]}).encode())
+
+    def run(script):
+        """script: {model: [reply, reply, ...]}; returns (result, calls in order)."""
+        calls = []
+
+        def post(url, body, headers, timeout):
+            model = url.split("/models/")[1].split(":")[0]
+            calls.append(model)
+            r = script[model].pop(0)
+            if isinstance(r, Exception):
+                raise r
+            return r
+
+        llm = GeminiClassifierLLM(models=list(script), waits=(0, 0), post=post, sleep=lambda s: None)
+        try:
+            return llm("p", {})[1], calls
+        except ClassifyError as e:
+            return f"error: {str(e)[:40]}", calls
+
+    with _EnvPatch(GEMINI_API_KEY="test-key"):
+        cases = {
+            "503 then ok": (run({"m1": [(503, b""), ok]}), ("m1", ["m1", "m1"])),
+            "timeout then ok": (run({"m1": [TimeoutError(), ok]}), ("m1", ["m1", "m1"])),
+            "429 skips model": (run({"m1": [(429, b"")], "m2": [ok]}), ("m2", ["m1", "m2"])),
+            "404 skips model": (run({"m1": [(404, b"")], "m2": [ok]}), ("m2", ["m1", "m2"])),
+            "503 x3 then next": (run({"m1": [(503, b"")] * 3, "m2": [ok]}), ("m2", ["m1", "m1", "m1", "m2"])),
+        }
+        res, calls = run({"m1": [(400, b"")], "m2": [ok]})
+        cases["400 stops at once"] = ((res.startswith("error"), calls), (True, ["m1"]))
+    wrong = {k: got for k, (got, want) in cases.items() if got != want}
+    if wrong:
+        return False, f"wrong for: {wrong}"
+    return True, "503/timeout retried; 429/404 skip model; other errors stop"
+
+
 def identity_scoping_enforced():
     from event_log import EventLog, ScopeViolation
     log = EventLog()
@@ -391,6 +489,10 @@ if __name__ == "__main__":
     check("Supabase token rules", supabase_token_rules)
     check("server auth paths", server_auth_paths)
     check("GET /me reports role", me_reports_role)
+    print("\nClassifier invariants")
+    check("classifier labels match the topics table", classifier_labels_match_db)
+    check("classifier rules", classifier_rules)
+    check("classifier model failures", classifier_model_failures)
 
     print()
     if failures:
