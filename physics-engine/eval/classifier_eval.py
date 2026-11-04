@@ -10,6 +10,8 @@ Classifier evaluation -- how accurately does the MODEL tag topic and subtopic?
 
 --model pins ONE model with no fallback, so the accuracy belongs to that model alone.
 --start/--limit split a run (the free tier allows 20 requests per model per day).
+--skip day1.json ... leaves out problems those files already tagged, so a run can pick up
+exactly what is missing. Failed retries also count against the daily limit (seen Nov 4).
 
 THE ANSWER KEY comes from formula_kb.py itself, never from hand labels: each problem is run
 through the engine with its known values, and if the engine solves it through exactly one
@@ -134,6 +136,8 @@ def main():
     ap.add_argument("--model", help="pin one model, no fallback (e.g. gemini-3.7-flash)")
     ap.add_argument("--start", type=int, default=0, help="skip the first N problems")
     ap.add_argument("--limit", type=int, help="run at most N problems")
+    ap.add_argument("--skip", nargs="+", metavar="JSON", default=[],
+                    help="skip problems already tagged successfully in these result files")
     ap.add_argument("--combine", nargs="+", metavar="JSON", help="summarise saved result files together")
     args = ap.parse_args()
 
@@ -156,9 +160,15 @@ def main():
             print(f"  {i['id']:10} -> {i['true_topic']} / {i['true_subtopic']}  ({i['card']})")
         return
 
-    llm = GeminiClassifierLLM(models=[args.model]) if args.model else GeminiClassifierLLM()
-    chosen = items[args.start: args.start + args.limit if args.limit else None]
-    print(f"Running {len(chosen)} problems ({args.start + 1}-{args.start + len(chosen)} of {len(items)})"
+    # cooldown=0: every problem gets its own attempt. The circuit breaker suits the live
+    # server, but here one overloaded moment would skip every problem for 5 minutes
+    # (measured Nov 4: one 503 streak skipped the next 9 problems untried).
+    models = [args.model] if args.model else GeminiClassifierLLM().models
+    llm = GeminiClassifierLLM(models=models, cooldown=0)
+    done = {r["id"] for path in args.skip for r in json.load(open(path)) if not r.get("error")}
+    chosen = [i for i in items[args.start:] if i["id"] not in done][:args.limit]
+    print(f"Running {len(chosen)} problems of {len(items)}"
+          f"{f' (skipping {len(done)} already measured)' if done else ''}"
           f" with {args.model or 'the default model chain'}")
     results = []
     for n, item in enumerate(chosen):
