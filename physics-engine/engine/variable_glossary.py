@@ -17,6 +17,7 @@ Two jobs:
                   at 25 m/s at 40 degrees" never mentions g=9.8, but MECH-KIN-PROJ needs it.
                   Injected automatically rather than expecting the LLM to remember.
 """
+import re
 import sympy as sp
 from scipy import constants as C
 
@@ -120,8 +121,13 @@ GLOSSARY = {
                               "resistor", "R_resistance", "series_resistance"]),
     "tau":      dict(desc="applied torque (N*m) when GIVEN; RC time constant (s) when ASKED FOR",
                      unit="N*m or s", aliases=["torque", "moment", "time_constant", "RC_constant"]),
-    "I":        dict(desc="moment of inertia", unit="kg*m^2",
-                     aliases=["moment_of_inertia", "rotational_inertia"]),
+    # `I` covers BOTH moment of inertia and wire current, because the cards do
+    # (MECH-ROT-TORQUE solves for inertia; EM-MAG-FORCE-WIRE takes current as an input).
+    # Safe for the same reason as `tau`: inertia is always an output, current always an input.
+    "I":        dict(desc="current in a wire (A) when GIVEN; moment of inertia (kg*m^2) when ASKED FOR",
+                     unit="A or kg*m^2",
+                     aliases=["moment_of_inertia", "rotational_inertia", "current",
+                              "wire_current", "I_wire"]),
     "alpha":    dict(desc="angular acceleration", unit="rad/s^2",
                      aliases=["angular_acceleration", "ang_accel"]),
     "omega":    dict(desc="angular speed", unit="rad/s",
@@ -387,6 +393,105 @@ def inject_constants(knowns, unknowns=None, cards=None):
             injected[const] = CONSTANTS[const]
     return knowns, injected
 
+# ---------------------------------------------------------------------------
+# Named objects and phrases -- values hidden inside words in the problem ("A proton at...",
+# "perpendicular to the field", "starts from rest",
+# "Using Earth's mass and radius"). The parser is told not to supply these, and
+# inject_constants() can't, because the card asks for q/m/M/Re, not e_charge/m_proton.
+#
+# Fill every value from a cited source and record it in "source". A value of None
+# means "not filled in yet": it is skipped, so the problem stays a gap instead of
+# getting a guessed number.
+NAMED_OBJECTS = {
+    "proton": {
+        "words": ["proton"],
+        "values": {"q": C.elementary_charge, "m": C.proton_mass},
+        "source": "scipy.constants (CODATA)",
+    },
+    "electron": {
+        # Charge as a magnitude, same rule as the parser: sign sets direction only.
+        "words": ["electron"],
+        "values": {"q": C.elementary_charge, "m": C.electron_mass},
+        "source": "scipy.constants (CODATA)",
+    },
+    "earth": {
+        "words": ["earth"],
+        "values": {"M": 5.97219e24, "Re": 6.378e6},  # kg, m -- fill from the book
+        "source": "TODO: book title, edition, page",
+    },
+    "perpendicular": {
+        # Angle between the wire and the field (EM-007). Only used by cards that need theta_deg.
+        "words": ["perpendicular", "at right angles"],
+        "values": {"theta_deg": 90},  # fill from the book: 90
+        "source": "TODO: book title, edition, page",
+    },
+    "from_rest": {
+        # Starting speed (MECH-001). Exact phrases only -- NOT "comes to rest",
+        # which means the FINAL speed is zero, the opposite case.
+        "words": ["from rest", "initially at rest"],
+        "values": {"v0": 0},  # fill from the book: 0
+        "source": "TODO: book title, edition, page",
+    },
+}
+
+
+def _found_objects(problem_text):
+    """Named objects mentioned in the text, as {key: matched text}. Whole words only,
+    plural allowed, so 'electronic' does not match 'electron'."""
+    found = {}
+    for key, obj in NAMED_OBJECTS.items():
+        for word in obj["words"]:
+            m = re.search(rf"\b{re.escape(word)}s?\b", problem_text, re.IGNORECASE)
+            if m:
+                found[key] = m.group(0)
+                break
+    return found
+
+
+def inject_named_objects(problem_text, knowns, unknowns, cards, sources=None):
+    """Fill in values that come from a named object in the problem text.
+
+    Same scoping as inject_constants(): only names required by a card that solves for
+    something actually asked. Rules:
+      * A number the problem states always wins. A known whose source phrase has a
+        digit in it was read from the text and is kept.
+      * A known with no number in its source was supplied by the model, which the
+        prompt forbids. It is replaced by the table value, so no number comes from AI.
+      * If two objects both offer the same name (a proton AND an electron), nothing is
+        filled for it. Guessing which one is meant would be a wrong answer.
+
+    Returns (knowns, injected, new_sources, report)."""
+    sources = sources or {}
+    wanted = set(unknowns or [])
+    needed = set()
+    for card in cards:
+        if set(card.solves_for) & wanted:
+            needed |= set(card.required_knowns)
+
+    found = _found_objects(problem_text)
+    injected, new_sources = {}, {}
+    report = {"found": found, "replaced_model_value": {}, "conflict": {}, "not_filled_in": {}}
+
+    for name in sorted(needed):
+        offers = [k for k in found if name in NAMED_OBJECTS[k]["values"]]
+        if not offers:
+            continue
+        if name in knowns and re.search(r"\d", sources.get(name) or ""):
+            continue  # stated in the problem; keep it
+        if len(offers) > 1:
+            report["conflict"][name] = offers
+            continue
+        key = offers[0]
+        value = NAMED_OBJECTS[key]["values"][name]
+        if value is None:
+            report["not_filled_in"][name] = key
+            continue
+        if name in knowns:
+            report["replaced_model_value"][name] = knowns[name]
+        knowns[name] = value
+        injected[name] = value
+        new_sources[name] = found[key]
+    return knowns, injected, new_sources, report
 
 def audit_symbol_collisions(cards):
     """Derive the live symbol collisions FROM the cards, rather than maintaining a list

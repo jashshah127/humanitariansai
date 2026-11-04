@@ -112,3 +112,77 @@
   font-size: var(--text-sm);
   color: var(--color-text);
 }
+
+/* ---- Shared by the five golden-set diagrams ---- */
+.axis {
+  stroke: var(--color-text-muted);
+  stroke-width: 1.5;
+}
+.rowTitle {
+  fill: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: var(--weight-medium);
+}
+.wheel {
+  fill: var(--color-text);
+}
+.bar {
+  fill: var(--color-brand);
+}
+.barLost {
+  fill: none;
+  stroke: var(--color-text-muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+.particle {
+  fill: var(--color-surface);
+  stroke: var(--color-brand);
+  stroke-width: 3;
+}
+.slope {
+  fill: var(--color-surface);
+  stroke: var(--color-text);
+  stroke-width: 2;
+}
+.wire {
+  fill: none;
+  stroke: var(--color-text);
+  stroke-width: 2;
+}
+.plate {
+  stroke: var(--color-text);
+  stroke-width: 3;
+}
+.current {
+  stroke: var(--color-brand);
+  stroke-width: 2.5;
+}
+
+/* Graphs, spring, orbit */
+.area {
+  fill: var(--color-brand);
+  fill-opacity: 0.15;
+}
+.wall {
+  stroke: var(--color-text);
+  stroke-width: 4;
+}
+.planet {
+  fill: var(--color-surface);
+  stroke: var(--color-text);
+  stroke-width: 2;
+}
+
+/* Wire, loop */
+.fieldLine {
+  stroke: var(--color-text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 6;
+}
+.wireThick {
+  stroke: var(--color-brand);
+  stroke-width: 5;
+  stroke-linecap: round;
+}

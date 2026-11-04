@@ -1,6 +1,4 @@
 // Shared fetch wrapper. Converted from legacy/api.js, plus a request timeout.
-
-const TOKEN_KEY = "pe_token";
 const SESSION_KEY = "pe_session";
 
 /**
@@ -9,24 +7,6 @@ const SESSION_KEY = "pe_session";
  * and the engine retries the model provider a few times before falling back.
  */
 export const REQUEST_TIMEOUT_MS = 90_000;
-
-export function loadToken(): string {
-  try {
-    return localStorage.getItem(TOKEN_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-// Saved on every change, not on blur, so a paste-then-click is never lost.
-export function saveToken(token: string): void {
-  try {
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    else localStorage.removeItem(TOKEN_KEY);
-  } catch {
-    // Storage blocked: the token still works for this page load.
-  }
-}
 
 // The contract requires session_id. One id per browser tab.
 // It groups telemetry only; it is NOT a student identifier.
@@ -117,10 +97,7 @@ export async function postJson<T>(
     }
 
     if (res.status === 401) {
-      throw new ApiError(
-        "auth",
-        "Your access token is missing, expired, or wrong. Paste a fresh one from mint_token.py.",
-      );
+      throw new ApiError("auth", "Your session has ended. Sign in again.");
     }
     if (res.status === 429) {
       const wait = Number(res.headers.get("Retry-After")) || null;

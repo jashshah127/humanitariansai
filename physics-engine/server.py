@@ -7,7 +7,9 @@ a demo that does not get seen.
 
 Run:
     export GEMINI_API_KEY=...          # free key from aistudio.google.com/apikey
-    export JWT_SECRET=...              # required -- /solve and /grade are now token-gated
+    export SUPABASE_URL=...            # Supabase sign-in (see AUTH below), and/or
+    export SUPABASE_PUBLISHABLE_KEY=...
+    export JWT_SECRET=...              # operator-minted tokens (mint_token.py)
     python3 server.py
 
 Then open http://localhost:8000
@@ -15,21 +17,23 @@ Then open http://localhost:8000
 Deploy free (Render / Railway / Fly):
     build:  pip install -r requirements.txt
     start:  python3 server.py
-    env:    GEMINI_API_KEY, JWT_SECRET, PORT
+    env:    GEMINI_API_KEY, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, JWT_SECRET, PORT
 
 FRONTEND: if frontend/dist/ exists (built with `npm run build` in frontend/), it is
 served at / and its asset paths. If it does not exist, the inline INDEX page below is
 served instead. Node is a build-time tool only; the running server stays stdlib-only.
 
-AUTH: /solve, /parse and /grade require `Authorization: Bearer <token>`. Mint tokens offline
-with mint_token.py -- there is no token-issuing endpoint, deliberately (see jwt_auth.py).
-/health, /cards, /stats stay open: they leak nothing sensitive and gating them would
-break the ability to sanity-check a deploy without already holding a token.
+AUTH: /solve, /parse and /grade require `Authorization: Bearer <token>`, where the token is
+either a Supabase session token (users sign up and sign in with Supabase Auth directly from
+the browser; this server only checks the token -- see supabase_auth.py) or an operator-
+minted token from mint_token.py (see jwt_auth.py). There is still no token-issuing endpoint
+here, deliberately. /health, /cards, /stats stay open: they leak nothing sensitive and gating
+them would break the ability to sanity-check a deploy without already holding a token.
 
-WHAT IS AND IS NOT SAFE HERE: nothing is stored server-side, and there is still no user
-database -- a valid token proves someone was handed one, not who they are. That is fine
-for now, but it means a leaked token is a leaked token forever within its expiry, with no
-per-user revocation. No student-identified data should be sent to this service until Q6
+WHAT IS AND IS NOT SAFE HERE: nothing is stored server-side. A minted token proves someone
+was handed one, not who they are, and a leaked one stays valid until it expires -- there is
+no revocation. A Supabase token does identify a user, and signing out revokes it at once,
+because every request asks Supabase whether the session still exists. No student-identified data should be sent to this service until Q6
 (data processing agreement / IRB) is answered, regardless of auth being in place --
 auth changes who can call the endpoint, not what governance applies to what flows through it.
 """
@@ -51,6 +55,7 @@ from variable_glossary import GLOSSARY
 from event_log import EventLog
 from formula_kb import ALL_CARDS
 from jwt_auth import verify_token, bearer_token_from_header, TokenError
+import supabase_auth
 from rate_limit import RateLimiter
 import static_files
 
@@ -133,14 +138,37 @@ def _rate_limited(handler):
 
 
 def _authenticate(handler):
-    """Checks the Authorization header on `handler`. Returns True on success;
-    sends a 401 and returns False on failure, so callers can `if not _authenticate(self): return`."""
+    """Checks the Authorization header on `handler`. Returns True on success; sends an
+    error and returns False on failure, so callers can `if not _authenticate(self): return`.
+
+    Two kinds of token are accepted while sign-in moves to Supabase:
+      1. an operator-minted HS256 token (mint_token.py) -- kept so CI, demos and existing
+         developer setups keep working; checked first because it needs no network call;
+      2. a Supabase session token (a signed-in user) -- checked by supabase_auth, only
+         when SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY are set.
+    A refused token is a 401. Supabase being unreachable is a 503 -- the caller's session
+    may be fine, so telling them it isn't would be wrong."""
     try:
         token = bearer_token_from_header(handler.headers.get("Authorization", ""))
+    except TokenError as e:
+        handler._send(401, {"error": f"unauthorized: {e}"})
+        return False
+    try:
         verify_token(token)
         return True
     except TokenError as e:
+        if not supabase_auth.configured():
+            handler._send(401, {"error": f"unauthorized: {e}"})
+            return False
+    try:
+        supabase_auth.verify_supabase_token(token)
+        return True
+    except TokenError as e:
         handler._send(401, {"error": f"unauthorized: {e}"})
+        return False
+    except supabase_auth.AuthUnavailable as e:
+        print(f"[auth] Supabase check failed: {e}", file=sys.stderr)
+        handler._send(503, {"error": "Sign-in can't be checked right now. Try again in a minute."})
         return False
 
 
@@ -152,6 +180,7 @@ class BadRequest(Exception):
 # different quantities. Keyed by the matched card's unit, which says which one it is.
 _AMBIGUOUS_LABELS = {
     "T": {"N": "tension in the string", "s": "period"},
+    "I": {"kg*m^2": "moment of inertia", "A": "current in the wire"},
 }
 
 _NOT_GRADABLE = {
@@ -459,9 +488,14 @@ def main():
     if not (os.environ.get("GEMINI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")):
         print("WARNING: no API key set. Parsing will fail unless Ollama is running.")
         print("         Free key: https://aistudio.google.com/apikey")
-    if not os.environ.get("JWT_SECRET"):
-        print("WARNING: JWT_SECRET not set. Every /solve, /parse and /grade call will 401.")
-        print("         Set it, then mint a token with: python3 mint_token.py --sub you")
+    modes = [m for m, on in (("minted tokens", os.environ.get("JWT_SECRET")),
+                             ("Supabase sign-in", supabase_auth.configured())) if on]
+    if modes:
+        print(f"Auth: {' + '.join(modes)}")
+    else:
+        print("WARNING: no auth configured. Every /solve, /parse and /grade call will 401.")
+        print("         Set SUPABASE_URL + SUPABASE_PUBLISHABLE_KEY for Supabase sign-in,")
+        print("         or JWT_SECRET and mint a token with: python3 mint_token.py --sub you")
     print(f"Listening on http://localhost:{port}")
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
 

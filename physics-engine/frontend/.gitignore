@@ -1,4 +1,5 @@
 node_modules/
 *.tsbuildinfo
+*.local
 # dist/ is intentionally NOT ignored: Render only runs `pip install`, so the
 # built frontend must be committed until the CI/CD pipeline builds it (Wk 4).
