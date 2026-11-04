@@ -141,16 +141,18 @@ def topics_tests(alice):
 
 def problems_log_tests(alice, admin):
     print("\nproblems_log")
-    st, d = call("POST", "/rest/v1/problems_log", body={**LOG_ROW, "topic": "Mechanics", "subtopic": "Dynamics"},
+    st, d = call("POST", "/rest/v1/problems_log", body={**LOG_ROW, "topic": "Mechanics", "subtopic": "Dynamics",
+                                                        "tag_source": "engine_card"},
                  prefer="return=representation", **SERVER)
     check("server (secret key) writes a tagged row", st, 201)
     if st == 201:
         check("  ...created_at was rounded to the hour", d[0]["created_at"][14:19], "00:00")
     st, d = call("POST", "/rest/v1/problems_log", body={**LOG_ROW, "created_at": "2026-10-22T14:37:52Z"}, **SERVER)
     check("exact (non-hour) time is rejected (23514)", (st, code(d)), (400, "23514"))
-    st, d = call("POST", "/rest/v1/problems_log", body={**LOG_ROW, "topic": "E&M", "subtopic": "Calorimetry"}, **SERVER)
+    st, d = call("POST", "/rest/v1/problems_log", body={**LOG_ROW, "topic": "E&M", "subtopic": "Calorimetry",
+                                                        "tag_source": "llm"}, **SERVER)
     check("invalid topic pair is rejected (23503)", (st, code(d)), (409, "23503"))
-    st, d = call("POST", "/rest/v1/problems_log", body={**LOG_ROW, "topic": "Mechanics"}, **SERVER)
+    st, d = call("POST", "/rest/v1/problems_log", body={**LOG_ROW, "topic": "Mechanics", "tag_source": "llm"}, **SERVER)
     check("topic without subtopic is rejected (23514)", (st, code(d)), (400, "23514"))
     st, d = call("POST", "/rest/v1/problems_log", body={**LOG_ROW, "redactions": -1}, **SERVER)
     check("negative redaction count is rejected (23514)", (st, code(d)), (400, "23514"))
@@ -168,6 +170,48 @@ def problems_log_tests(alice, admin):
     check("admin reads this run's 2 rows", (st, len(d)), (200, 2))
     st, d = call("POST", "/rest/v1/problems_log", admin[0], LOG_ROW)
     check("even an admin cannot write the log from the browser (42501)", (st, code(d)), (403, "42501"))
+
+
+def tagging_tests():
+    """The tagging columns' rules, then the server's own writer (problem_log.py) end to end."""
+    print("\nproblems_log tagging (server writer)")
+    pair = {"topic": "Mechanics", "subtopic": "Dynamics"}
+    st, d = call("POST", "/rest/v1/problems_log", body={**LOG_ROW, **pair}, **SERVER)
+    check("topic without tag_source is rejected (23514)", (st, code(d)), (400, "23514"))
+    st, d = call("POST", "/rest/v1/problems_log", body={**LOG_ROW, "tag_source": "llm"}, **SERVER)
+    check("tag_source without topic is rejected (23514)", (st, code(d)), (400, "23514"))
+    st, d = call("POST", "/rest/v1/problems_log", body={**LOG_ROW, **pair, "tag_source": "guess"}, **SERVER)
+    check("unknown tag_source is rejected (23514)", (st, code(d)), (400, "23514"))
+
+    import os
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "engine"))
+    from problem_log import SupabaseLogStore, log_and_tag, LogError
+    from pipeline import solve_physics_problem
+    store = SupabaseLogStore(URL, SECRET)
+    solution = solve_physics_problem("rls", "atwood", {"m1": 4, "m2": 6, "g": 9.8}, ["a", "T"],
+                                     topic_hint="Mechanics")
+    reply = json.dumps({"topic": "E&M", "subtopic": "Circuits", "grade_level": "high_school",
+                        "difficulty": "easy", "confidence": 0.9})       # disagrees with the card
+    query = f"{TEXT_TAG} I'm jane@uni.edu. Atwood machine, 4 kg and 6 kg: find a and T."
+    outcome = log_and_tag(query, {"verification": "verified", "trace": solution}, store,
+                          llm=lambda prompt, schema: (reply, "fake-model"))
+    check("server writer: insert + tag succeeds", outcome, "tagged")
+    st, d = call("GET", f"/rest/v1/problems_log?select=*&problem_text=like.*Atwood*"
+                        f"&{'problem_text=like.' + urllib.request.quote(TEXT_TAG) + '*'}", **SERVER)
+    row = d[0] if st == 200 and d else {}
+    check("  ...stored text is redacted, count 1", ("jane@" in row.get("problem_text", ""), row.get("redactions")),
+          (False, 1))
+    check("  ...card label kept, source engine_card, card recorded",
+          (row.get("topic"), row.get("subtopic"), row.get("tag_source"), row.get("matched_card")),
+          ("Mechanics", "Dynamics", "engine_card", "MECH-DYN-ATWOOD"))
+    check("  ...model disagreed -> needs_review with reason",
+          (row.get("needs_review"), row.get("review_reason")), (True, "model said E&M / Circuits"))
+    try:
+        store.insert({**LOG_ROW, "redactions": -1})
+        check("server writer: invalid row raises LogError", "accepted", "LogError")
+    except LogError as e:
+        check("server writer: invalid row raises LogError without row contents",
+              ("23514" in str(e), "pulley" in str(e)), (True, False))
 
 
 def role_tests(alice, bob, admin):
@@ -220,6 +264,7 @@ if __name__ == "__main__":
         profiles_tests(alice, bob)
         topics_tests(alice)
         problems_log_tests(alice, admin)
+        tagging_tests()
         role_tests(alice, bob, admin)
     finally:
         sql(f"delete from public.problems_log where problem_text like '{TEXT_TAG}%'")

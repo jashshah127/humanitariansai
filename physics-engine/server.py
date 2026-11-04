@@ -18,6 +18,7 @@ Deploy free (Render / Railway / Fly):
     build:  pip install -r requirements.txt
     start:  python3 server.py
     env:    GEMINI_API_KEY, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, JWT_SECRET, PORT
+            optional SUPABASE_SECRET_KEY -- turns on problem logging (below)
 
 FRONTEND: if frontend/dist/ exists (built with `npm run build` in frontend/), it is
 served at / and its asset paths. If it does not exist, the inline INDEX page below is
@@ -31,7 +32,12 @@ here, deliberately. GET /me (also token-gated) reports who the caller is and, fo
 users, their role. /health, /cards, /stats stay open: they leak nothing sensitive and gating
 them would break the ability to sanity-check a deploy without already holding a token.
 
-WHAT IS AND IS NOT SAFE HERE: nothing is stored server-side. A minted token proves someone
+PROBLEM LOG: when SUPABASE_SECRET_KEY is set, every /solve is also written to Supabase's
+problems_log -- text cleaned of emails/phones/links/IDs first, no user or session id, time
+rounded to the hour -- and tagged in a background worker (see problem_log.py). The student's
+answer never waits for it. Without the secret key, nothing is stored.
+
+WHAT IS AND IS NOT SAFE HERE: A minted token proves someone
 was handed one, not who they are, and a leaked one stays valid until it expires -- there is
 no revocation. A Supabase token does identify a user, and signing out revokes it at once,
 because every request asks Supabase whether the session still exists. No student-identified data should be sent to this service until Q6
@@ -57,6 +63,7 @@ from event_log import EventLog
 from formula_kb import ALL_CARDS
 from jwt_auth import verify_token, bearer_token_from_header, TokenError
 import supabase_auth
+import problem_log
 from rate_limit import RateLimiter
 import static_files
 
@@ -70,6 +77,10 @@ import static_files
 _gemini_limiter = RateLimiter(rate_per_minute=8, burst=8)
 
 _log = EventLog()
+
+# Off unless the server holds the Supabase secret key (problem_log.py explains why).
+_problem_log = (problem_log.ProblemLogger(problem_log.SupabaseLogStore())
+                if problem_log.configured() else None)
 
 API_GET = ("/health", "/cards", "/stats")
 
@@ -112,6 +123,8 @@ def api_solve(body):
                         session_id=body.get("session_id", "web"),
                         render=body.get("render", "solve"))
     d = result.to_dict()
+    if _problem_log:         # queued, not awaited: the answer goes back right away
+        _problem_log.submit(body.get("query", ""), dict(d))
     d.pop("trace", None)     # too large for a UI response; still in the event log
     return d
 
@@ -520,6 +533,8 @@ def main():
         print("WARNING: no auth configured. Every /solve, /parse and /grade call will 401.")
         print("         Set SUPABASE_URL + SUPABASE_PUBLISHABLE_KEY for Supabase sign-in,")
         print("         or JWT_SECRET and mint a token with: python3 mint_token.py --sub you")
+    print("Problem log: on (Supabase problems_log)" if _problem_log
+          else "Problem log: off (set SUPABASE_SECRET_KEY to store and tag solved problems)")
     print(f"Listening on http://localhost:{port}")
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
 

@@ -497,6 +497,122 @@ def redaction_rules():
     return True, "emails/links/phones/IDs replaced and counted; physics numbers untouched; second pass is a no-op"
 
 
+def problem_logging_rules():
+    """Each solve is stored cleaned and untagged first, then tagged; a model failure leaves
+    it untagged; the worker survives errors and drops (never blocks) when its queue is full;
+    /solve hands the log the full result but still strips the trace from its reply."""
+    import json
+    import threading
+    from problem_log import ProblemLogger, build_row, log_and_tag, configured
+    from classifier import ClassifyError
+    from pipeline import solve_physics_problem
+
+    class FakeStore:
+        def __init__(self, fail=False, gate=None):
+            self.inserts, self.updates, self.fail, self.gate = [], [], fail, gate
+
+        def insert(self, row):
+            if self.gate:
+                self.gate.wait(5)
+            if self.fail:
+                self.fail = False                 # fail once, then work
+                raise RuntimeError("database down")
+            self.inserts.append(row)
+            return f"id{len(self.inserts)}"
+
+        def update(self, row_id, fields):
+            self.updates.append((row_id, fields))
+
+    def llm_ok(prompt, schema):
+        return json.dumps({"topic": "Mechanics", "subtopic": "Dynamics", "grade_level": "high_school",
+                           "difficulty": "easy", "confidence": 0.9}), "m1"
+
+    def llm_down(prompt, schema):
+        raise ClassifyError("all models failed")
+
+    atwood = {"verification": "verified",
+              "trace": solve_physics_problem("c", "atwood", {"m1": 4, "m2": 6, "g": 9.8}, ["a", "T"],
+                                             topic_hint="Mechanics")}
+    unsolved = {"verification": "unverified", "trace": {"route": "no_deterministic_path"}}
+    cases = {}
+
+    row, clean = build_row("mail a@b.co: Atwood 4 kg, 6 kg", atwood)
+    cases["row is cleaned, counted, card recorded"] = (
+        (row["problem_text"], row["redactions"], row["verification"], row.get("matched_card")),
+        ("mail [EMAIL]: Atwood 4 kg, 6 kg", 1, "verified", "MECH-DYN-ATWOOD"))
+    cases["no card -> no matched_card"] = ("matched_card" in build_row("x", unsolved)[0], False)
+
+    s = FakeStore()
+    cases["tagged: insert then update with tags"] = (
+        (log_and_tag("Atwood", atwood, s, llm_ok), len(s.inserts), s.updates[0][1]["tag_source"]
+         if s.updates else None), ("tagged", 1, "engine_card"))
+    s = FakeStore()
+    cases["model down + no card -> stored untagged"] = (
+        (log_and_tag("a quantum question", unsolved, s, llm_down), len(s.inserts), len(s.updates)),
+        ("untagged", 1, 0))
+    s = FakeStore()
+    cases["empty query -> nothing stored"] = ((log_and_tag("  ", unsolved, s, llm_ok), s.inserts), ("skipped", []))
+
+    s = FakeStore(fail=True)
+    logger = ProblemLogger(s, llm=llm_ok)
+    logger.submit("first", atwood)                # store raises on this one
+    logger.submit("second", atwood)
+    logger.wait()
+    cases["worker survives an error and keeps going"] = (logger.outcomes, {"failed": 1, "tagged": 1})
+
+    gate = threading.Event()
+    s = FakeStore(gate=gate)
+    logger = ProblemLogger(s, llm=llm_ok, maxsize=1)
+    for i in range(4):                            # worker holds 1, queue holds 1, rest dropped
+        logger.submit(f"p{i}", atwood)
+        if i == 0:
+            for _ in range(100):                  # let the worker pick up the first one
+                if logger._q.empty():
+                    break
+                threading.Event().wait(0.01)
+    cases["full queue drops instead of blocking"] = (logger.dropped, 2)
+    gate.set()
+    logger.wait()
+
+    with _EnvPatch(SUPABASE_URL="http://supabase.test", SUPABASE_SECRET_KEY=None):
+        cases["off without the secret key"] = (configured(), False)
+
+    sys.path.insert(0, os.path.join(HERE, ".."))
+    import server
+
+    class FakeMode:
+        def __init__(self, *a, **k):
+            pass
+
+        def solve(self, query, **k):
+            return type("R", (), {"to_dict": lambda self: dict(atwood, route="deterministic_script")})()
+
+    class Recorder:
+        def __init__(self):
+            self.got = []
+
+        def submit(self, query, result):
+            self.got.append((query, "trace" in result))
+
+    saved = server.PhysicsEngineMode, server._llm, server._problem_log
+    try:
+        server.PhysicsEngineMode, server._llm = FakeMode, lambda: None
+        server._problem_log = rec = Recorder()
+        reply = server.api_solve({"query": "Atwood 4 kg 6 kg"})
+        cases["/solve: log gets query + trace, reply has no trace"] = (
+            (rec.got, "trace" in reply), ([("Atwood 4 kg 6 kg", True)], False))
+        server._problem_log = None
+        cases["/solve works with logging off"] = (server.api_solve({"query": "q"})["verification"], "verified")
+    finally:
+        server.PhysicsEngineMode, server._llm, server._problem_log = saved
+
+    wrong = {k: got for k, (got, want) in cases.items() if got != want}
+    if wrong:
+        return False, f"wrong for: {wrong}"
+    return True, ("stored cleaned + untagged, then tagged; model down -> untagged; worker survives errors; "
+                  "full queue drops; /solve never waits")
+
+
 def identity_scoping_enforced():
     from event_log import EventLog, ScopeViolation
     log = EventLog()
@@ -548,6 +664,7 @@ if __name__ == "__main__":
     check("classifier model failures", classifier_model_failures)
     print("\nLogging invariants")
     check("redaction rules", redaction_rules)
+    check("problem logging", problem_logging_rules)
 
     print()
     if failures:
