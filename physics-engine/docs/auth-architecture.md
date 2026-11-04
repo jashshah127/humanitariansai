@@ -1,7 +1,8 @@
 # Auth architecture
 
 How sign-up, sign-in, roles and data access work in the Physics Engine: which piece does what,
-how a request is checked, and where the rules are enforced.
+how a request is checked, and where the rules are enforced. For the frontend-facing request/response
+reference, see [api-contract.md](api-contract.md).
 
 **Status (2026-11-03):** backend on branch `feature-shailly`; frontend sign-in pages on `feature-atharva`.
 Neither is merged into `main` yet. The database migrations are applied to the hosted Supabase project.
@@ -171,13 +172,14 @@ zero rows. Only a blocked insert returns 403. Code and tests must check what cha
 | `SUPABASE_URL` | Supabase sign-in | No |
 | `SUPABASE_PUBLISHABLE_KEY` | Supabase sign-in (sent as `apikey`) | No — designed to be public |
 | `JWT_SECRET` | Operator-minted tokens | **Yes** |
+| `SUPABASE_SECRET_KEY` | Writing `problems_log` (optional; logging is off without it) | **Yes** — bypasses RLS |
 
 The startup line reports what is active, e.g. `Auth: minted tokens + Supabase sign-in`.
 
 **Frontend build:** `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`.
 
 **Never** put the Supabase **secret** key in the frontend or in this repo: it bypasses all RLS. Only the server may
-hold it (needed later for writing `problems_log`).
+hold it, for writing `problems_log` (`engine/problem_log.py`).
 
 **Supabase project settings** (dashboard → Authentication):
 
@@ -201,6 +203,7 @@ Schema changes are migration files in `supabase/migrations/`, applied in order:
 1. `20261015194448_initial_schema.sql` — `app_role`, `profiles`, signup trigger
 2. `20261022164924_problems_log.sql` — `topics`, `is_admin()`, `problems_log`
 3. `20261103224949_role_assignment.sql` — `set_user_role()`, `admin_list_users()`
+4. `20261104040000_problems_log_tagging.sql` — tagging columns on `problems_log` (local only so far)
 
 Locally, `npx supabase@2.121.0 db reset` rebuilds the database from these files. For the hosted project:
 `db push --dry-run` first, then `db push`. Add a new migration for every change; never edit one that has been applied
@@ -213,7 +216,7 @@ to a shared database.
 | Suite | Runs | Covers |
 |---|---|---|
 | `eval/ci_check.py` → *Auth invariants* | Offline, in CI on every pull request | Supabase reply mapping; every server auth path (incl. "a minted token never calls Supabase"); `/me` roles |
-| `eval/rls_tests.py` | Against the **local** Supabase (`python3 eval/rls_tests.py`) | 35 checks across `profiles`, `topics`, `problems_log`, `set_user_role`, `admin_list_users`, including one user trying to read or change another's data |
+| `eval/rls_tests.py` | Against the **local** Supabase (`python3 eval/rls_tests.py`) | 43 checks across `profiles`, `topics`, `problems_log` (including the server's own log writer), `set_user_role`, `admin_list_users`, including one user trying to read or change another's data |
 
 `rls_tests.py` refuses to run against anything but a local Supabase, and deletes the users and rows it creates.
 
