@@ -94,6 +94,7 @@
         "per_quantity": {"type": "object", "description": "name -> {submitted, reference, correct}, for each submitted asked-for quantity. `reference` is the correct value: see ui_guidance.grade."},
         "reference_answer": {"type": ["object", "null"], "description": "name -> correct value, asked-for quantities only. See ui_guidance.grade."},
         "reference_formula": {"type": ["string", "null"], "description": "Name of the principle the reference used."},
+                "relationship_latex": {"type": ["string", "null"], "description": "LaTeX of the formula for the first wrong quantity, e.g. \"\\\\Delta = ...\". Only set for wrong_value. Contains no numbers, so it never reveals the answer."},
         "divergence": {"type": ["object", "null"], "description": "Reserved for step-by-step grading. Not filled by the web UI yet."},
         "misconception": {"type": ["string", "null"], "description": "Machine name of the matched mistake (sign_flip, reciprocal, factor_2_high, ...). For analytics; the readable version is in feedback."},
         "missing": {"type": "array", "description": "Asked-for names the student left out."},
