@@ -24,8 +24,11 @@ export function ErrorState({ error, onRetry }: Props) {
   return (
     <div className={styles.error} role="alert">
       <p className={styles.errorText}>
-        {error.message}
-        {error.kind === "rate" && wait > 0 && ` You can try again in ${wait} seconds.`}
+        <ErrorIcon />
+        <span>
+          {error.message}
+          {error.kind === "rate" && wait > 0 && ` You can try again in ${wait} seconds.`}
+        </span>
       </p>
       {canRetry && (
         <Button type="button" onClick={onRetry} disabled={wait > 0}>
@@ -33,5 +36,23 @@ export function ErrorState({ error, onRetry }: Props) {
         </Button>
       )}
     </div>
+  );
+}
+function ErrorIcon() {
+  return (
+    <svg
+      className={styles.errorIcon}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="8" cy="8" r="6.5" />
+      <path d="M8 4.75v3.75" />
+      <circle cx="8" cy="11" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
   );
 }

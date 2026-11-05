@@ -1,12 +1,14 @@
+import { useId } from "react";
 import type { Candidate } from "../../api/types.ts";
 import { formatValue } from "../../utils/format.ts";
 import styles from "./result.module.css";
 
 // Contract: show every candidate with its "applies when". Never pick one for the student.
 export function CandidateList({ candidates }: { candidates: Candidate[] }) {
+  const headingId = useId();
   return (
-    <section className={styles.section} aria-labelledby="candidates-heading">
-      <h2 id="candidates-heading" className={styles.heading}>
+    <section className={styles.section} aria-labelledby={headingId}>
+      <h2 id={headingId} className={styles.heading}>
         More than one principle fits
       </h2>
       <p className={styles.lead}>

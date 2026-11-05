@@ -9,7 +9,10 @@ import { Button } from "../../design/components/Button.tsx";
 import { isWrong, normalizeAssessment } from "../grade/answer.ts";
 import { GradeSection } from "../grade/GradeSection.tsx";
 import { ResultPanel } from "../result/ResultPanel.tsx";
+import { badgeLabel } from "../../design/components/verification.ts";
+import { usePageTitle } from "../../utils/usePageTitle.ts";
 import { ErrorState } from "./ErrorState.tsx";
+import { EmptyWorkspace } from "./EmptyWorkspace.tsx";
 import { ExampleChips } from "./ExampleChips.tsx";
 import { MAX_CHARS, MODES, parseMode } from "./mode.ts";
 import type { WorkspaceMode } from "./mode.ts";
@@ -67,6 +70,23 @@ export default function WorkspacePage() {
   const canSubmit =
     !!trimmed && trimmed.length <= MAX_CHARS && !loading && !(mode === "grade" && setupCurrent);
   const submitLabel = MODES.find((m) => m.value === mode)?.submit ?? "Solve";
+  // Nothing has been asked yet in this mode: show what will happen instead of a blank space.
+  const empty = !loading && !error && (mode === "grade" ? !setup : !result);
+    // One short message for screen readers. The result itself is no longer a live region,
+  // because reading the whole card aloud on every change was too much.
+  // Errors aren't here: ErrorState has role="alert" and announces itself.
+  let announcement = "";
+  if (loading) {
+    announcement = slow ? "Still working. The server may be starting up." : "Working on it.";
+  } else if (!error && mode === "grade") {
+    if (setup && !setupCurrent) announcement = "The problem has changed.";
+    else if (graded) announcement = "Answers checked. The result is below.";
+    else if (setup) announcement = "Answer boxes are ready below.";
+  } else if (!error && result) {
+    announcement = `Result ready: ${badgeLabel(result.verification, result.badge)}.`;
+  }
+
+  usePageTitle();
 
   function changeMode(next: WorkspaceMode) {
     setParams(
@@ -182,7 +202,10 @@ export default function WorkspacePage() {
         <ExampleChips onPick={setQuery} />
       </form>
 
-      <section className={styles.output} aria-live="polite">
+            <p className="visually-hidden" role="status">
+        {announcement}
+      </p>
+      <section className={styles.output} aria-label="Result">
         {loading && (
           <p className={styles.status}>
             {slow
@@ -193,6 +216,7 @@ export default function WorkspacePage() {
         {error && (
           <ErrorState key={errorId} error={error} onRetry={() => lastRequestRef.current?.()} />
         )}
+        {empty && <EmptyWorkspace mode={mode} />}
         {mode !== "grade" && result && <ResultPanel key={resultId} data={result} busy={loading} />}
         {mode === "grade" && setup && setupCurrent && (
           <GradeSection

@@ -6,7 +6,7 @@ import styles from "./Card.module.css";
 export interface CardProps extends Omit<HTMLAttributes<HTMLElement>, "title"> {
   title?: ReactNode;
   /** Pick the level that fits the page's heading outline. */
-  headingLevel?: 2 | 3 | 4;
+  headingLevel?: 1 | 2 | 3 | 4;
   padding?: "sm" | "md" | "lg";
   as?: "section" | "article" | "div";
   children: ReactNode;
@@ -22,7 +22,7 @@ export function Card({
   ...rest
 }: CardProps) {
   const titleId = useId();
-  const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
+  const Heading = `h${headingLevel}` as "h1" | "h2" | "h3" | "h4";
   return (
     <Tag
       className={cx(styles.card, className)}

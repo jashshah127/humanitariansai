@@ -1,0 +1,39 @@
+/* Tokens only. Same frame as the auth pages. */
+.page {
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-6);
+}
+
+.brand {
+  margin: 0 0 var(--space-4);
+  font-weight: var(--weight-bold);
+  color: var(--color-brand);
+}
+
+.title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-2xl);
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+
+.lead {
+  margin: 0 0 var(--space-6);
+  color: var(--color-text-muted);
+}
+
+.link {
+  color: var(--color-brand);
+  font-weight: var(--weight-medium);
+  text-underline-offset: 0.2em;
+}
+.link:hover {
+  color: var(--color-brand-hover);
+}
+.link:focus-visible {
+  outline: 2px solid transparent;
+  box-shadow: var(--focus-ring);
+  border-radius: 2px;
+}

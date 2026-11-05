@@ -3,6 +3,7 @@ import { Button } from "../../design/components/Button.tsx";
 import { Card } from "../../design/components/Card.tsx";
 import { VerificationBadge } from "../../design/components/Badge.tsx";
 import { formatValue } from "../../utils/format.ts";
+import { MathFormula } from "../result/MathFormula.tsx";
 import resultStyles from "../result/result.module.css";
 import type { Assessment } from "./answer.ts";
 import {
@@ -98,6 +99,12 @@ export function GradeView({
         )}
 
         <p className={styles.feedback}>{data.feedback || "This answer couldn't be graded."}</p>
+                {data.relationship_latex && (
+          <div className={styles.relationship}>
+            <p className={styles.relationshipLabel}>The relationship to use:</p>
+            <MathFormula latex={data.relationship_latex} display />
+          </div>
+        )}
 
         {isWrong(assessment) && !showReference && (
           <div className={styles.next}>

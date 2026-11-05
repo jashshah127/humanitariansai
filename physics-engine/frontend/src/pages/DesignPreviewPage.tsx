@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button, Card, Input, TextArea, VerificationBadge } from "../design/components/index.ts";
 import styles from "./DesignPreviewPage.module.css";
+import { usePageTitle } from "../utils/usePageTitle.ts";
 
 // Internal page: every token and component state on one screen.
 // Used for design review, the Wk 5 accessibility pass and dark-mode checks.
@@ -50,6 +51,7 @@ const SPACING = [
 const SAMPLE = "Two blocks of 4 kg and 6 kg hang from a frictionless pulley.";
 
 export default function DesignPreviewPage() {
+      usePageTitle("Design system");
   const [theme, setTheme] = useState<Theme>("system");
   const [problem, setProblem] = useState("A car starts from rest and accelerates at 2.5 m/s².");
 

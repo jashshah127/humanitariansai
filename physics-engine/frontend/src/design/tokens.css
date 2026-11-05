@@ -83,7 +83,9 @@
   --radius-full: 999px; /* badges */
 
   /* Motion */
-  --duration-fast: 120ms;
+  --duration-fast: 120ms; /* hover, color changes */
+  --duration-base: 200ms; /* things appearing or moving */
+  --ease-out: cubic-bezier(0.2, 0, 0, 1); /* fast start, gentle stop */
 }
 
 /* Dark mode — PROVISIONAL. Applies when the OS is dark, unless the page
@@ -138,11 +140,40 @@
   --focus-ring: 0 0 0 3px #141414, 0 0 0 5px #f2f2f2;
 }
 */
-/* Base styles that use the tokens */
+/* Base styles that use the tokens.
+   The two resets below replace the only useful rules from the deleted legacy/styles.css. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
+  margin: 0;
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
+}
+
+/* Browsers give form controls their own small system font; make them follow the page. */
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+/* Hidden on screen, still read by screen readers. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }

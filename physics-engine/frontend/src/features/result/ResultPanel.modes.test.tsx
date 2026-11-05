@@ -36,6 +36,11 @@ function article(data: SolveResponse) {
 }
 
 describe("ResultPanel in tutor render", () => {
+      it("moves focus to each new hint", () => {
+    const { container } = render(<ResultPanel data={tutor} />);
+    fireEvent.click(within(container).getByRole("button", { name: "Show next hint" }));
+    expect(document.activeElement).toHaveTextContent("The principle: Atwood machine.");
+  });
   it("shows the hint ladder and no answer list", () => {
     const view = article(tutor);
     expect(view.getByRole("heading", { name: "Hints" })).toBeInTheDocument();
@@ -55,6 +60,14 @@ describe("ResultPanel in tutor render", () => {
 });
 
 describe("ResultPanel notices", () => {
+  it("says so when nothing but the badge came back", () => {
+    const view = article({ ...tutor, hints: null });
+    expect(view.getByText(/No answer came back/)).toBeInTheDocument();
+  });
+
+  it("does not show that message when there is an answer", () => {
+    expect(article(projectile).queryByText(/No answer came back/)).toBeNull();
+  });
   it("says the problem is outside the engine when unverified", () => {
     const view = article({
       ...tutor,

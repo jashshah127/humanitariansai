@@ -52,6 +52,12 @@
   font: inherit;
   cursor: pointer;
 }
+
+.play:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .play:focus-visible,
 .controls input:focus-visible {
   outline: none;

@@ -100,7 +100,14 @@
   max-width: 65ch;
   color: var(--color-text);
 }
-
+.relationship {
+  margin-top: var(--space-4);
+}
+.relationshipLabel {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
 .next {
   display: flex;
   flex-wrap: wrap;

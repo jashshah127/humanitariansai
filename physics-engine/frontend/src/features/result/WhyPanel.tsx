@@ -1,3 +1,4 @@
+import { useId } from "react";
 import type { SolveResponse } from "../../api/types.ts";
 import { MathFormula } from "./MathFormula.tsx";
 import styles from "./result.module.css";
@@ -22,6 +23,7 @@ export function WhyPanel({
   const assumptionList = assumptions ?? [];
   const equations = formula_latex ?? [];
   const general = Object.values(general_answer_latex ?? {});
+    const headingId = useId();
 
   if (
     !formula_used &&
@@ -32,8 +34,8 @@ export function WhyPanel({
     return null;
 
   return (
-    <section className={styles.section} aria-labelledby="why-heading">
-      <h2 id="why-heading" className={styles.heading}>
+    <section className={styles.section} aria-labelledby={headingId}>
+      <h2 id={headingId} className={styles.heading}>
         How this was worked out
       </h2>
       <dl className={styles.facts}>
