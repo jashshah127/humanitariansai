@@ -189,21 +189,46 @@ def compare(engine_values, ground_truth_raw, answer_type=None):
                               f"unmatched ground truth {unmatched}; engine gave {eng}")
 
 
+def _normalize_parsed(expr):
+    """sympy's LaTeX parser reads \\pi as an ordinary symbol and writes a subscript as m_{2}.
+    Make the result comparable with engine expressions: pi becomes the constant and
+    m_{2} becomes m2."""
+    try:
+        mapping = {}
+        for sym in expr.free_symbols:
+            name = str(sym)
+            if name == "pi":
+                mapping[sym] = sp.pi
+                continue
+            m = re.fullmatch(r"([A-Za-z]+)_\{(\w+)\}", name)
+            if m:
+                mapping[sym] = sp.Symbol(m.group(1) + m.group(2))
+        return expr.xreplace(mapping) if mapping else expr
+    except Exception:
+        return expr
+
+
 def _try_parse_latex(s):
     """Parse a LaTeX expression into a SymPy expression.
 
-    Needs the antlr4 runtime, which is one command away on any machine with network:
-        pip install antlr4-python3-runtime==4.11
-    It was NOT installable in the sandbox this was written in, so the parse_latex call
-    below is unexercised here while everything around it is tested. Returns None when
-    unavailable or unparseable, so a missing dependency degrades to NOT_COMPARABLE
-    rather than crashing a benchmark run midway."""
+    Needs the antlr4 runtime:  pip install antlr4-python3-runtime==4.11
+    Returns None when the parser is unavailable, the text is not a formula, or the text
+    cannot be parsed, so a missing dependency degrades to NOT_COMPARABLE rather than
+    crashing a benchmark run midway.
+
+    A text answer such as \\text{see figure} would be read as a product of single letters and
+    reported as a wrong answer, so anything containing words is treated as undecidable."""
+    if re.search(r"\\text|\\textbf|\\mathrm\{[A-Za-z]{2,}", s):
+        return None
+    # The parser reads g(m_2 - m_1) as a function g applied to the bracket. In a physics answer
+    # a single letter before a bracket is a product, so write the multiplication out.
+    s = re.sub(r"(?<![\\A-Za-z])([A-Za-z])\s*\(", r"\1\\cdot(", s)
     try:
         from sympy.parsing.latex import parse_latex
     except Exception:
         return None
     try:
-        return parse_latex(s)
+        return _normalize_parsed(parse_latex(s))
     except Exception:
         return None
 
@@ -227,6 +252,11 @@ def strip_equation(s):
     return s[positions[0] + 1:].strip()
 
 
+# sympify reads I as the imaginary unit and E as Euler's number, but in physics they are a
+# current and an energy. Names like these must stay ordinary symbols in engine expressions.
+_PLAIN_SYMBOLS = {n: sp.Symbol(n) for n in ("I", "E", "N", "S", "Q", "O", "gamma", "beta", "zeta")}
+
+
 def symbolic_equal(engine_expr, truth_latex):
     """Are two symbolic answers the same expression?
 
@@ -239,7 +269,7 @@ def symbolic_equal(engine_expr, truth_latex):
     if truth is None:
         return None
     try:
-        eng = sp.sympify(engine_expr) if not isinstance(engine_expr, sp.Basic) else engine_expr
+        eng = sp.sympify(engine_expr, locals=_PLAIN_SYMBOLS) if not isinstance(engine_expr, sp.Basic) else engine_expr
     except Exception:
         return None
     try:
