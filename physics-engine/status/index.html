@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Physics Engine status</title>
+<style>
+:root{--bg:#fff;--fg:#1a1a1a;--mute:#5f6368;--line:#d0d5dd;--ok:#067647;--okbg:#ecfdf3;--bad:#b42318;--badbg:#fef3f2;--wait:#b54708;--waitbg:#fffaeb;--card:#f8f9fb}
+@media (prefers-color-scheme:dark){:root{--bg:#14161a;--fg:#e8eaed;--mute:#9aa0a6;--line:#3c4043;--ok:#6ce9a6;--okbg:#0b2a1b;--bad:#fda29b;--badbg:#2b1210;--wait:#fec84b;--waitbg:#2b2008;--card:#1b1e23}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,Segoe UI,Calibri,sans-serif}
+main{max-width:860px;margin:0 auto;padding:28px 20px 60px}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:18px;margin:34px 0 10px}
+.sub{color:var(--mute);margin:0 0 6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.card{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:14px 16px}
+.name{font-weight:600}.url{color:var(--mute);font-size:13px;word-break:break-all}
+.chip{display:inline-block;margin-top:8px;padding:2px 10px;border-radius:999px;font-weight:600;font-size:14px}
+.up{background:var(--okbg);color:var(--ok)}.down{background:var(--badbg);color:var(--bad)}.wait{background:var(--waitbg);color:var(--wait)}
+.detail{margin-top:6px;color:var(--mute);font-size:14px}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid var(--line);padding:6px 9px;text-align:left}th{background:var(--card)}
+.scroll{overflow-x:auto}.note{color:var(--mute);font-size:13px}
+ul{padding-left:20px}li{margin:3px 0}
+</style></head><body><main>
+<h1>Physics Engine status</h1>
+<p class="sub">For the team and the manager. Generated 2026-11-09 22:08 UTC.</p>
+
+<h2>Live checks (from your browser, right now)</h2>
+<div class="grid" id="live"></div>
+<p class="note">Free instances sleep after 15 idle minutes, so the first answer can take about a minute. Opening this page wakes them.</p>
+
+<h2>Recorded health probes</h2>
+<div class="scroll"><table><tr><th>Service address</th><th>Probes</th><th>Healthy</th><th>Uptime</th><th>Median</th><th>95th pct</th><th>Slowest</th><th>Over 10 s</th><th>First</th><th>Last</th></tr><tr><td>https://physics-engine-staging.onrender.com</td><td>21</td><td>21</td><td>100%</td><td>31.3 s</td><td>51.3 s</td><td>51.3 s</td><td>19</td><td>2026-10-29 00:19</td><td>2026-10-29 10:03</td></tr><tr><td>https://physics-engine-hr0x.onrender.com</td><td>1</td><td>1</td><td>100%</td><td>62.4 s</td><td>62.4 s</td><td>62.4 s</td><td>1</td><td>2026-10-29 00:21</td><td>2026-10-29 00:21</td></tr></table></div><p class="note">Probe times are UTC. Latency over 10 s is almost always a cold start on the free plan.</p><h2>Latency of each probe (https://physics-engine-staging.onrender.com)</h2><svg viewBox="0 0 640 110" width="100%" role="img" aria-label="Latency of each recorded probe"><line x1="10" x2="630" y1="81.2" y2="81.2" stroke="#999" stroke-dasharray="4 4"/><text x="12" y="77.2" font-size="10" fill="#666">10 s</text><polyline points="10.0,97.5 41.0,97.6 72.0,45.3 103.0,45.5 134.0,12.0 165.0,62.1 196.0,43.8 227.0,43.8 258.0,43.8 289.0,62.3 320.0,45.6 351.0,45.6 382.0,45.5 413.0,45.6 444.0,45.5 475.0,45.3 506.0,43.6 537.0,43.6 568.0,43.8 599.0,45.5 630.0,12.1" fill="none" stroke="#1d4ed8" stroke-width="1.5"/><circle cx="10.0" cy="97.5" r="3" fill="#1d4ed8"/><circle cx="41.0" cy="97.6" r="3" fill="#1d4ed8"/><circle cx="72.0" cy="45.3" r="3" fill="#1d4ed8"/><circle cx="103.0" cy="45.5" r="3" fill="#1d4ed8"/><circle cx="134.0" cy="12.0" r="3" fill="#1d4ed8"/><circle cx="165.0" cy="62.1" r="3" fill="#1d4ed8"/><circle cx="196.0" cy="43.8" r="3" fill="#1d4ed8"/><circle cx="227.0" cy="43.8" r="3" fill="#1d4ed8"/><circle cx="258.0" cy="43.8" r="3" fill="#1d4ed8"/><circle cx="289.0" cy="62.3" r="3" fill="#1d4ed8"/><circle cx="320.0" cy="45.6" r="3" fill="#1d4ed8"/><circle cx="351.0" cy="45.6" r="3" fill="#1d4ed8"/><circle cx="382.0" cy="45.5" r="3" fill="#1d4ed8"/><circle cx="413.0" cy="45.6" r="3" fill="#1d4ed8"/><circle cx="444.0" cy="45.5" r="3" fill="#1d4ed8"/><circle cx="475.0" cy="45.3" r="3" fill="#1d4ed8"/><circle cx="506.0" cy="43.6" r="3" fill="#1d4ed8"/><circle cx="537.0" cy="43.6" r="3" fill="#1d4ed8"/><circle cx="568.0" cy="43.8" r="3" fill="#1d4ed8"/><circle cx="599.0" cy="45.5" r="3" fill="#1d4ed8"/><circle cx="630.0" cy="12.1" r="3" fill="#1d4ed8"/></svg><p class="note">Blue dots are healthy probes, red dots failed. The dashed line is 10 seconds.</p>
+
+<h2>How deploys work</h2>
+<ul>
+<li>CI runs on every pull request and every push to <code>main</code> and <code>feature-harsh</code>.</li>
+<li>Render deploys only after CI passes. A failing commit is not deployed.</li>
+<li>Staging builds <code>feature-harsh</code>; the live service tracks <code>main</code>.</li>
+<li>Rollback: Render, Events, Rollback to the previous deploy, then Revert the pull request on GitHub.</li>
+</ul>
+<p class="note">The recorded numbers update when <code>python eval/status_page.py</code> is run again and the result is pushed.</p>
+</main>
+<script>
+const SERVICES = [{"name": "Live (main)", "url": "https://physics-engine-hr0x.onrender.com"}, {"name": "Staging", "url": "https://physics-engine-staging.onrender.com"}];
+const live = document.getElementById("live");
+SERVICES.forEach(function (s) {
+  const card = document.createElement("div");
+  card.className = "card";
+  const name = document.createElement("div"); name.className = "name"; name.textContent = s.name;
+  const url = document.createElement("div"); url.className = "url"; url.textContent = s.url;
+  const chip = document.createElement("span"); chip.className = "chip wait"; chip.textContent = "checking...";
+  const detail = document.createElement("div"); detail.className = "detail";
+  card.append(name, url, chip, detail); live.append(card);
+  const t0 = performance.now();
+  const timer = setInterval(function () {
+    detail.textContent = "waiting " + Math.round((performance.now() - t0) / 1000) + " s (the service may be waking up)";
+  }, 1000);
+  const ctl = new AbortController();
+  const stop = setTimeout(function () { ctl.abort(); }, 90000);
+  fetch(s.url + "/health", { signal: ctl.signal, cache: "no-store" })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (x) {
+      const secs = ((performance.now() - t0) / 1000).toFixed(1);
+      if (x.ok && x.d.status === "ok") {
+        chip.className = "chip up"; chip.textContent = "up";
+        detail.textContent = "answered in " + secs + " s; " + x.d.cards + " cards; " + x.d.provider;
+      } else {
+        chip.className = "chip down"; chip.textContent = "problem";
+        detail.textContent = "answered in " + secs + " s but did not report ok";
+      }
+    })
+    .catch(function (e) {
+      chip.className = "chip down"; chip.textContent = "not reachable from this browser";
+      detail.textContent = e && e.name === "AbortError" ? "no answer within 90 s"
+        : "the request failed or the browser blocked it; see the recorded probes below";
+    })
+    .finally(function () { clearInterval(timer); clearTimeout(stop); });
+});
+</script></body></html>
