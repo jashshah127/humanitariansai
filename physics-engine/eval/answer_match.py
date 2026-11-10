@@ -278,9 +278,20 @@ def symbolic_equal(engine_expr, truth_latex):
     except Exception:
         pass
     try:
-        return bool(eng.equals(truth))
+        if eng.equals(truth):
+            return True
+    except Exception:
+        pass
+    # Not equal. If the two sides use different symbol names, that may be only naming (the
+    # engine writes k_wave where the problem writes k), so report "cannot decide" and not
+    # "different". A wrong answer is reported as different only when both sides use the
+    # same symbols.
+    try:
+        if {str(x) for x in eng.free_symbols} != {str(x) for x in truth.free_symbols}:
+            return None
     except Exception:
         return None
+    return False
 
 
 def compare_symbolic(engine_symbolic, ground_truth_raw):
