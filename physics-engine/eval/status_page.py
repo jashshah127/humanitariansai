@@ -129,6 +129,20 @@ ul{padding-left:20px}li{margin:3px 0}
 <script>
 const SERVICES = %%SERVICES%%;
 const live = document.getElementById("live");
+function showCache(base, line) {
+  fetch(base + "/stats", { cache: "no-store" })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      const c = d.cache;
+      if (!c) { line.textContent = "cache: not in this version"; return; }
+      if (!c.enabled) { line.textContent = "cache: off"; return; }
+      if (c.backend === "not used yet") { line.textContent = "cache: on, not used yet"; return; }
+      const rate = c.hit_rate === null || c.hit_rate === undefined ? "n/a" : Math.round(c.hit_rate * 100) + "%";
+      line.textContent = "cache: on (" + c.backend + "), " + c.hits + " hits, " + c.misses + " misses, hit rate " + rate +
+        ", " + c.entries + " stored, " + c.errors + " errors";
+    })
+    .catch(function () { line.textContent = "cache: could not read /stats"; });
+}
 SERVICES.forEach(function (s) {
   const card = document.createElement("div");
   card.className = "card";
@@ -136,7 +150,8 @@ SERVICES.forEach(function (s) {
   const url = document.createElement("div"); url.className = "url"; url.textContent = s.url;
   const chip = document.createElement("span"); chip.className = "chip wait"; chip.textContent = "checking...";
   const detail = document.createElement("div"); detail.className = "detail";
-  card.append(name, url, chip, detail); live.append(card);
+  const cacheLine = document.createElement("div"); cacheLine.className = "detail";
+  card.append(name, url, chip, detail, cacheLine); live.append(card);
   const t0 = performance.now();
   const timer = setInterval(function () {
     detail.textContent = "waiting " + Math.round((performance.now() - t0) / 1000) + " s (the service may be waking up)";
@@ -150,6 +165,7 @@ SERVICES.forEach(function (s) {
       if (x.ok && x.d.status === "ok") {
         chip.className = "chip up"; chip.textContent = "up";
         detail.textContent = "answered in " + secs + " s; " + x.d.cards + " cards; " + x.d.provider;
+        showCache(s.url, cacheLine);
       } else {
         chip.className = "chip down"; chip.textContent = "problem";
         detail.textContent = "answered in " + secs + " s but did not report ok";
