@@ -328,8 +328,8 @@ def compare_symbolic(engine_symbolic, ground_truth_raw):
     if not remaining:
         return Verdict.MATCH, f"all {len(matched)} symbolic answer(s) equivalent"
     if undecided and not matched:
-        return Verdict.NOT_COMPARABLE, ("could not parse the ground truth symbolically -- "
-                                        "install antlr4-python3-runtime to enable this path")
+        return Verdict.NOT_COMPARABLE, ("could not decide: the ground truth did not parse, or it uses "
+                                        "different symbol names from the engine's formula")
     return Verdict.MISMATCH, (f"matched {len(matched)}/{len(truth_tokens)}; "
                               f"unmatched {remaining}")
 
