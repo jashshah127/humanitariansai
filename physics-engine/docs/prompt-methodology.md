@@ -63,8 +63,17 @@ Both tests use saved results only, with no model calls.
 
 1. **A prompt rule can unlock right answers and wrong ones together.** `v2` found three reliable new right answers, among them the Doppler sign problem it was written for, and two reliable new wrong ones.
 2. **A check in code is safer than a prompt instruction.** `v1` shows the model does not reliably follow a rule, and the guards act on what the parser actually returned.
-3. **Recommendation:** adopt `v2` only together with the two guards, in the engine, and only after testing on problems outside this set. The next test is the full numeric stratum (234 problems), with the guards applied offline.
+3. **Recommendation:** adopt `v2` only together with the two guards, in the engine, and only after testing on problems outside this set. The held-out test (section 8a) could not do this, because the engine answered none of those problems. A real test needs more problems the engine answers, which means adding cards or other benchmark subjects first.
 4. Raise the guards with Jash. They are an engine change and belong in the engine.
+
+## 8a. Held-out test (10 November 2026)
+
+- **Setup:** the 149 numeric problems outside the 85-problem set (`eval/sample/ids_holdout.txt`), the same model, one run of the engine's default prompt and one of `v2`.
+- **Result:** both answered **0 of 149**. Default prompt: 26 parsed with no unknown, 47 no card, 76 missing knowns. `v2`: 27, 43, 79. No new right answers and no new wrong answers.
+- **What it shows:** the problems `v2` changed were the ones the 85-problem set was built around (wave equations, implied zeros, one quantity short, named objects). Outside those patterns the engine answers nothing either way, so `v2` did no harm there.
+- **What it does not show:** because nothing was answered, there were no wrong answers for the guards to catch, so **the guards remain untested out of sample**. Zero answers is not evidence that `v2` or the guards are safe.
+- The five problems the engine had answered earlier were all in the 85-problem set and excluded from this one by construction, so a baseline of 0 answered was expected.
+- **One further out-of-sample case:** the only answered problem in the 250-problem symbolic batch (ClassicalElectromagnetism-464) is a wrong answer, a circular-loop formula used for a square loop beside two wires. Before running it, Claude predicted that the unused-quantity guard would flag two parsed quantities; it listed `I` and `L`. This is a single case, not tested for false alarms (there is no right symbolic answer to test them on), and it does not change the conclusion above.
 
 ## 9. Limitations
 
