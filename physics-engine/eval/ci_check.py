@@ -305,6 +305,142 @@ def phase1_end_to_end():
     return False, "phase 1 end-to-end regressed"
 
 
+def parse_cache():
+    """Offline checks of llm_cache: no model, no network."""
+    import os
+    import llm_cache as lc
+
+    class Counter:
+        model = "stub"
+
+        def __init__(self, replies=None, fail=False):
+            self.calls, self.fail, self.replies = 0, fail, replies
+
+        def __call__(self, prompt):
+            self.calls += 1
+            if self.fail:
+                raise RuntimeError("model down")
+            return self.replies if self.replies is not None else "reply:" + prompt
+
+    # 1. the same prompt twice makes one model call and the same answer
+    inner, stats = Counter(), lc.CacheStats()
+    llm = lc.CachingLLM(inner, lc.MemoryCache(), stats)
+    a, b = llm("p1"), llm("p1")
+    if not (a == b and inner.calls == 1 and stats.hits == 1 and stats.misses == 1):
+        return False, "the same prompt did not hit the cache"
+    # 2. a different prompt is a miss
+    llm("p2")
+    if inner.calls != 2:
+        return False, "a different prompt was served from the cache"
+    # 3. a failed call is not stored, and the error reaches the caller
+    bad, st2 = Counter(fail=True), lc.CacheStats()
+    badllm = lc.CachingLLM(bad, lc.MemoryCache(), st2)
+    for _ in range(2):
+        try:
+            badllm("x")
+            return False, "a model failure was swallowed"
+        except RuntimeError:
+            pass
+    if bad.calls != 2 or st2.stores != 0:
+        return False, "a failure was cached"
+    # 4. an empty reply is not stored
+    empty, st3 = Counter(replies="  "), lc.CacheStats()
+    el = lc.CachingLLM(empty, lc.MemoryCache(), st3)
+    el("e")
+    el("e")
+    if empty.calls != 2 or st3.stores != 0:
+        return False, "an empty reply was cached"
+
+    # 5. a cache that raises never breaks the answer, and the fault is counted
+    class Broken:
+        name = "broken"
+
+        def get(self, k):
+            raise OSError("down")
+
+        def set(self, k, v):
+            raise OSError("down")
+
+    ok_inner, st4 = Counter(), lc.CacheStats()
+    r = lc.CachingLLM(ok_inner, Broken(), st4)("q")
+    if r != "reply:q" or st4.errors < 2:
+        return False, "a cache fault broke or hid the answer"
+    # 6. memory is bounded and entries expire
+    t = [0.0]
+    mc = lc.MemoryCache(max_entries=2, ttl_seconds=10, clock=lambda: t[0])
+    mc.set("a", "1")
+    mc.set("b", "2")
+    mc.set("c", "3")
+    if mc.get("a") is not None or mc.get("c") != "3":
+        return False, "the memory limit was not enforced"
+    t[0] = 11.0
+    if mc.get("c") is not None:
+        return False, "an expired entry was served"
+    # 7. off by default: the model is returned unchanged; on: wrapped, and unwrap gives it back
+    saved = os.environ.pop("CACHE_ENABLED", None)
+    try:
+        lc._reset_for_tests()
+        m = Counter()
+        if lc.wrap_llm(m) is not m:
+            return False, "the cache was on without being asked"
+        os.environ["CACHE_ENABLED"] = "1"
+        w = lc.wrap_llm(m)
+        if lc.unwrap(w) is not m:
+            return False, "the model could not be recovered from the wrapper"
+    finally:
+        os.environ.pop("CACHE_ENABLED", None)
+        if saved is not None:
+            os.environ["CACHE_ENABLED"] = saved
+        lc._reset_for_tests()
+    # 8. a different model (or chain of models) is a different key
+    class A:
+        model = "m1"
+
+        def __call__(self, p):
+            return "x"
+
+    class B:
+        model = "m2"
+
+        def __call__(self, p):
+            return "x"
+
+    if lc.CachingLLM(A(), lc.MemoryCache(), lc.CacheStats())._key("p") == lc.CachingLLM(B(), lc.MemoryCache(), lc.CacheStats())._key("p"):
+        return False, "two different models share a cache key"
+    # 9. server wiring: with a key set, the server's model is a real one, /health names it, and the wrapper is transparent
+    root = os.path.join(HERE, "..")
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    import server
+    saved_keys = {k: os.environ.get(k) for k in ("GEMINI_API_KEY", "ANTHROPIC_API_KEY", "CACHE_ENABLED")}
+    try:
+        os.environ["GEMINI_API_KEY"] = "test-key-not-real"
+        os.environ.pop("ANTHROPIC_API_KEY", None)
+        os.environ.pop("CACHE_ENABLED", None)
+        lc._reset_for_tests()
+        raw = server._raw_llm()
+        if raw is None or not callable(raw):
+            return False, "the server built no model when a key was set"
+        if type(server._llm()) is not type(raw):
+            return False, "the cache changed the model while it was off"
+        if server.api_health()["provider"] != type(raw).__name__:
+            return False, "/health no longer names the real provider"
+        os.environ["CACHE_ENABLED"] = "1"
+        lc._reset_for_tests()
+        if lc.unwrap(server._llm()) is None or type(lc.unwrap(server._llm())) is not type(raw):
+            return False, "the cache wrapper hides the model"
+        if server.api_health()["provider"] != type(raw).__name__:
+            return False, "/health names the wrapper, not the provider"
+    finally:
+        for k, v in saved_keys.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        lc._reset_for_tests()
+    return True, "same prompt = one model call; failures and empty replies not cached; cache faults harmless; bounded; keyed by model; off by default; server wiring intact"
+
+
 if __name__ == "__main__":
     print("Phase 0 invariants")
     check("golden set", golden_set_16)
@@ -317,6 +453,7 @@ if __name__ == "__main__":
     check("symbolic input mode", symbolic_input_mode)
     check("glossary covers every card variable", glossary_covers_cards)
     check("identity scoping enforced", identity_scoping_enforced)
+    check("parse cache", parse_cache)
     print("\nPhase 2 invariants")
     check("grade mode", grade_mode_works)
     check("grade feedback hides the answer", grade_feedback_safe)

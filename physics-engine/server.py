@@ -57,6 +57,7 @@ from formula_kb import ALL_CARDS
 from jwt_auth import verify_token, bearer_token_from_header, TokenError
 import supabase_auth
 from rate_limit import RateLimiter
+from llm_cache import wrap_llm, stats_snapshot
 import static_files
 
 # Global, not per-caller -- see rate_limit.py's docstring for why. 8/min stays under
@@ -73,7 +74,7 @@ _log = EventLog()
 API_GET = ("/health", "/cards", "/stats")
 
 
-def _llm():
+def _raw_llm():
     """Use every provider that has a key, in order: Gemini, then Claude.
     Falls back to the next one if a call fails. Ollama only if no keys are set."""
     chain = []
@@ -86,8 +87,13 @@ def _llm():
     return chain[0] if len(chain) == 1 else FallbackLLM(*chain)
 
 
+def _llm():
+    """The provider, wrapped in the cache when CACHE_ENABLED is set (otherwise unchanged)."""
+    return wrap_llm(_raw_llm())
+
+
 def api_health():
-    return {"status": "ok", "cards": len(ALL_CARDS), "provider": type(_llm()).__name__,
+    return {"status": "ok", "cards": len(ALL_CARDS), "provider": type(_raw_llm()).__name__,
             "frontend": "react" if static_files.built() else "inline"}
 
 
@@ -102,7 +108,8 @@ def api_cards():
 
 def api_stats():
     return {"routes": _log.route_split(), "latency": _log.latency_summary(),
-            "coverage_gaps": len(_log.coverage_gaps())}
+            "coverage_gaps": len(_log.coverage_gaps()),
+            "cache": stats_snapshot()}
 
 
 def api_solve(body):
@@ -482,7 +489,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     port = int(os.environ.get("PORT", 8000))
-    provider = type(_llm()).__name__
+    provider = type(_raw_llm()).__name__
     ui = "React build (frontend/dist)" if static_files.built() else "inline fallback (no frontend/dist)"
     print(f"Physics Engine  |  {len(ALL_CARDS)} formula cards  |  parser: {provider}  |  UI: {ui}")
     if not (os.environ.get("GEMINI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")):
