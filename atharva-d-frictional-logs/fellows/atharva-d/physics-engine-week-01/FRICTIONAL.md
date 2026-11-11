@@ -31,7 +31,7 @@ Planned hours: 32 (split across tasks: ci_check 2, docs + demos 5, Gemini key + 
 
 **What Claude or another person contributed — accepted, changed, rejected**
 - Claude walked me through venv setup, Render config, the JWT code and the rate limiter. I applied and tested each locally and on Render.
-- Gemini key request: Claude recommended the cheaper Flash-Lite tier and said there was no evidence I needed Pro. I rejected that and sent a Pro request, and removed the caveat Claude had added about the missing justification.
+
 
 **What I understand now, and what I still don't**
 - Understand: adding auth means anyone using the public demo page now needs a token.
