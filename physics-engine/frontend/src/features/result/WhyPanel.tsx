@@ -23,7 +23,7 @@ export function WhyPanel({
   const assumptionList = assumptions ?? [];
   const equations = formula_latex ?? [];
   const general = Object.values(general_answer_latex ?? {});
-    const headingId = useId();
+  const headingId = useId();
 
   if (
     !formula_used &&

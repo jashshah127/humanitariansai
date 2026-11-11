@@ -98,7 +98,7 @@ describe("WorkspacePage in grade mode", () => {
 
     fireEvent.change(box, { target: { value: PROBLEM + " Use g = 10." } });
     await waitFor(() => expect(view.queryByLabelText("Linear acceleration (a)")).toBeNull());
-        // The visible message under the form...
+    // The visible message under the form...
     expect(view.getByText(/to set up answer boxes for it/)).toBeInTheDocument();
     // ...and the short version announced to screen readers.
     expect(view.getByRole("status")).toHaveTextContent("The problem has changed.");

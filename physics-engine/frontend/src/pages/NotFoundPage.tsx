@@ -1,17 +1,17 @@
 import { Link } from "react-router";
-import styles from "./NotFoundPage.module.css";
-import { usePageTitle } from "../utils/usePageTitle.ts";
+import { EmptyState } from "../design/components/EmptyState.tsx";
+import styles from "./StatusPage.module.css";
 
 export default function NotFoundPage() {
-      usePageTitle("Page not found");
   return (
     <main className={styles.page}>
-      <p className={styles.brand}>Physics Engine</p>
-      <h1 className={styles.title}>Page not found</h1>
-      <p className={styles.lead}>This address doesn’t match any page.</p>
-      <Link className={styles.link} to="/app">
-        Go to the workspace
-      </Link>
+      <EmptyState
+        headingLevel={1}
+        title="Page not found"
+        action={<Link to="/app">Go to the workspace</Link>}
+      >
+        <p>This address doesn’t match any page. Check the link, or start from the workspace.</p>
+      </EmptyState>
     </main>
   );
 }

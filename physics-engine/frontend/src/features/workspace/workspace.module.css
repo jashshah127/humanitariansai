@@ -47,6 +47,10 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   resize: vertical;
+  transition: border-color var(--duration-fast) ease-out;
+}
+.textarea:hover:not(:focus-visible):not([aria-invalid="true"]) {
+  border-color: var(--color-text-muted);
 }
 .textarea:focus-visible {
   outline: 2px solid transparent; /* still visible in Windows high-contrast mode */
@@ -112,6 +116,10 @@
 }
 .option:has(input:focus-visible) {
   box-shadow: var(--focus-ring);
+}
+/* Unselected options only, and not while the toggle is disabled during a request. */
+.option:not(:has(input:checked)):not(:has(input:disabled)):hover {
+  background: var(--color-surface-muted);
 }
 @media (prefers-reduced-motion: reduce) {
   .option {

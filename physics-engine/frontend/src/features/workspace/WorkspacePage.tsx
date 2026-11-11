@@ -9,6 +9,7 @@ import { Button } from "../../design/components/Button.tsx";
 import { isWrong, normalizeAssessment } from "../grade/answer.ts";
 import { GradeSection } from "../grade/GradeSection.tsx";
 import { ResultPanel } from "../result/ResultPanel.tsx";
+import { ResultSkeleton } from "../result/ResultSkeleton.tsx";
 import { badgeLabel } from "../../design/components/verification.ts";
 import { usePageTitle } from "../../utils/usePageTitle.ts";
 import { ErrorState } from "./ErrorState.tsx";
@@ -70,9 +71,12 @@ export default function WorkspacePage() {
   const canSubmit =
     !!trimmed && trimmed.length <= MAX_CHARS && !loading && !(mode === "grade" && setupCurrent);
   const submitLabel = MODES.find((m) => m.value === mode)?.submit ?? "Solve";
+  // Only when nothing is on screen yet. With an older result showing, that result
+  // stays (dimmed) instead, so the page doesn't jump.
+  const showSkeleton = loading && (mode === "grade" ? !(setup && setupCurrent) : !result);
   // Nothing has been asked yet in this mode: show what will happen instead of a blank space.
   const empty = !loading && !error && (mode === "grade" ? !setup : !result);
-    // One short message for screen readers. The result itself is no longer a live region,
+  // One short message for screen readers. The result itself is no longer a live region,
   // because reading the whole card aloud on every change was too much.
   // Errors aren't here: ErrorState has role="alert" and announces itself.
   let announcement = "";
@@ -202,7 +206,7 @@ export default function WorkspacePage() {
         <ExampleChips onPick={setQuery} />
       </form>
 
-            <p className="visually-hidden" role="status">
+      <p className="visually-hidden" role="status">
         {announcement}
       </p>
       <section className={styles.output} aria-label="Result">
@@ -213,6 +217,7 @@ export default function WorkspacePage() {
               : "Working on it…"}
           </p>
         )}
+        {showSkeleton && <ResultSkeleton />}
         {error && (
           <ErrorState key={errorId} error={error} onRetry={() => lastRequestRef.current?.()} />
         )}

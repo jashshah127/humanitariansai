@@ -5,6 +5,7 @@ import { arrivedFromRecoveryLink, linkError, supabase } from "../../api/supabase
 import { AuthContext, signedOut } from "./AuthContext.ts";
 import type { AuthValue } from "./AuthContext.ts";
 import { friendly } from "./authErrors.ts";
+import { useRole } from "./useRole.ts";
 
 /** Where email links send the user back to. Each must be in Supabase's redirect list. */
 function backTo(path: string): string {
@@ -21,6 +22,9 @@ async function check<T extends { error: { message: string } | null }>(p: Promise
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(supabase !== null);
+  const token = session?.access_token ?? "";
+  // Keyed on the user's id, so the hourly token refresh doesn't ask again.
+  const { role, roleStatus } = useRole(session?.user.id ?? null, token);
 
   useEffect(() => {
     if (!supabase) return;
@@ -38,11 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!client) return signedOut;
     return {
       session,
-      token: session?.access_token ?? "",
+      token,
       loading,
       configured: true,
       recoveryLink: arrivedFromRecoveryLink,
       linkError,
+      role,
+      roleStatus,
       async signIn(email, password) {
         await check(client.auth.signInWithPassword({ email, password }));
       },
@@ -65,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await check(client.auth.updateUser({ password }));
       },
     };
-  }, [session, loading]);
+  }, [session, loading, token, role, roleStatus]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

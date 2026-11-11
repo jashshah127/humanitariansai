@@ -4,14 +4,29 @@
 
 .result {
   transition: opacity var(--duration-fast) ease-out;
+  /* Each new result is a fresh mount (WorkspacePage keys it), so this runs once per answer. */
+  animation: appear var(--duration-base) ease-out;
 }
 .result[aria-busy="true"] {
   opacity: 0.5;
 }
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-1));
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .result {
     transition: none;
+    animation: none;
   }
+}
+
+/* Loading outline (ResultSkeleton) */
+.skeleton {
+  display: grid;
+  gap: var(--space-3);
 }
 
 .notice {

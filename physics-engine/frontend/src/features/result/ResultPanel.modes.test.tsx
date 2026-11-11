@@ -36,7 +36,7 @@ function article(data: SolveResponse) {
 }
 
 describe("ResultPanel in tutor render", () => {
-      it("moves focus to each new hint", () => {
+  it("moves focus to each new hint", () => {
     const { container } = render(<ResultPanel data={tutor} />);
     fireEvent.click(within(container).getByRole("button", { name: "Show next hint" }));
     expect(document.activeElement).toHaveTextContent("The principle: Atwood machine.");

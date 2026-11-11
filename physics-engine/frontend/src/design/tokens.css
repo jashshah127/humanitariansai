@@ -83,7 +83,8 @@
   --radius-full: 999px; /* badges */
 
   /* Motion */
-  --duration-fast: 120ms; /* hover, color changes */
+  --duration-fast: 120ms; /* hover and color changes */
+  --duration-base: 200ms; /* something new appearing */
   --duration-base: 200ms; /* things appearing or moving */
   --ease-out: cubic-bezier(0.2, 0, 0, 1); /* fast start, gentle stop */
 }

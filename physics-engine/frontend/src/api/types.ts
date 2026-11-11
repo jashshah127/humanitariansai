@@ -116,7 +116,7 @@ export interface GradeResponse {
   per_quantity?: Record<string, QuantityGrade>;
   reference_answer?: AnswerMap | null;
   reference_formula?: string | null;
-    /** LaTeX of the formula for a wrong value. Render with MathFormula, never as text. */
+  /** LaTeX of the formula for a wrong value. Render with MathFormula, never as text. */
   relationship_latex?: string | null;
   /** Machine name of the matched mistake; the readable version is in `feedback`. */
   misconception?: string | null;

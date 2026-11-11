@@ -56,7 +56,13 @@ describe("no WCAG A/AA issues", () => {
 
   it("graded answers", async () => {
     const { container } = render(
-      <GradeView data={wrong} unknowns={unknowns} wrongAttempts={1} revealed={false} onReveal={() => {}} />,
+      <GradeView
+        data={wrong}
+        unknowns={unknowns}
+        wrongAttempts={1}
+        revealed={false}
+        onReveal={() => {}}
+      />,
     );
     expect(await axeIssues(container)).toEqual([]);
   });

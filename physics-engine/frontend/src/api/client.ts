@@ -57,7 +57,9 @@ function httpMessage(status: number): string {
   return `Something went wrong on the server (error ${status}).`;
 }
 
-export async function postJson<T>(
+/** One request to server.py. postJson and getJson below are the two ways to call it. */
+async function request<T>(
+  method: "GET" | "POST",
   path: string,
   body: unknown,
   token: string,
@@ -80,12 +82,12 @@ export async function postJson<T>(
     let res: Response;
     try {
       res = await fetch(path, {
-        method: "POST",
+        method,
         headers: {
-          "Content-Type": "application/json",
+          ...(method === "POST" ? { "Content-Type": "application/json" } : {}),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(body),
+        body: method === "POST" ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
     } catch (e) {
@@ -114,4 +116,23 @@ export async function postJson<T>(
     clearTimeout(timer);
     signal?.removeEventListener("abort", onCallerAbort);
   }
+}
+
+export function postJson<T>(
+  path: string,
+  body: unknown,
+  token: string,
+  signal?: AbortSignal,
+  timeoutMs: number = REQUEST_TIMEOUT_MS,
+): Promise<T> {
+  return request<T>("POST", path, body, token, signal, timeoutMs);
+}
+
+export function getJson<T>(
+  path: string,
+  token: string,
+  signal?: AbortSignal,
+  timeoutMs: number = REQUEST_TIMEOUT_MS,
+): Promise<T> {
+  return request<T>("GET", path, undefined, token, signal, timeoutMs);
 }

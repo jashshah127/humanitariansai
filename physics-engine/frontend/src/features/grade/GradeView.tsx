@@ -99,7 +99,7 @@ export function GradeView({
         )}
 
         <p className={styles.feedback}>{data.feedback || "This answer couldn't be graded."}</p>
-                {data.relationship_latex && (
+        {data.relationship_latex && (
           <div className={styles.relationship}>
             <p className={styles.relationshipLabel}>The relationship to use:</p>
             <MathFormula latex={data.relationship_latex} display />

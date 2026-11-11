@@ -20,6 +20,7 @@ export default defineConfig({
       "/health": api,
       "/cards": api,
       "/stats": api,
+      "/me": api,
     },
   },
   // Do NOT change outDir: engine/static_files.py serves exactly frontend/dist.

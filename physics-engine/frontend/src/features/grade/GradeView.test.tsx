@@ -37,7 +37,7 @@ function show(data: GradeResponse, wrongAttempts = 1, revealed = false, onReveal
 }
 
 describe("GradeView", () => {
-      it("renders the relationship as math", () => {
+  it("renders the relationship as math", () => {
     const article = show({
       ...wrong,
       relationship_latex: "a = \\frac{g \\left(m_{1} - m_{2}\\right)}{m_{1} + m_{2}}",
