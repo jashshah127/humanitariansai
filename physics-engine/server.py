@@ -18,6 +18,8 @@ Deploy free (Render / Railway / Fly):
     build:  pip install -r requirements.txt
     start:  python3 server.py
     env:    GEMINI_API_KEY, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, JWT_SECRET, PORT
+            optional SUPABASE_SECRET_KEY -- turns on problem logging (below)
+            optional GEMINI_PARSE_MODEL, GEMINI_TAG_MODELS -- override the pinned models
 
 FRONTEND: if frontend/dist/ exists (built with `npm run build` in frontend/), it is
 served at / and its asset paths. If it does not exist, the inline INDEX page below is
@@ -27,10 +29,16 @@ AUTH: /solve, /parse and /grade require `Authorization: Bearer <token>`, where t
 either a Supabase session token (users sign up and sign in with Supabase Auth directly from
 the browser; this server only checks the token -- see supabase_auth.py) or an operator-
 minted token from mint_token.py (see jwt_auth.py). There is still no token-issuing endpoint
-here, deliberately. /health, /cards, /stats stay open: they leak nothing sensitive and gating
+here, deliberately. GET /me (also token-gated) reports who the caller is and, for Supabase
+users, their role. /health, /cards, /stats stay open: they leak nothing sensitive and gating
 them would break the ability to sanity-check a deploy without already holding a token.
 
-WHAT IS AND IS NOT SAFE HERE: nothing is stored server-side. A minted token proves someone
+PROBLEM LOG: when SUPABASE_SECRET_KEY is set, every /solve is also written to Supabase's
+problems_log -- text cleaned of emails/phones/links/IDs first, no user or session id, time
+rounded to the hour -- and tagged in a background worker (see problem_log.py). The student's
+answer never waits for it. Without the secret key, nothing is stored.
+
+WHAT IS AND IS NOT SAFE HERE: A minted token proves someone
 was handed one, not who they are, and a leaked one stays valid until it expires -- there is
 no revocation. A Supabase token does identify a user, and signing out revokes it at once,
 because every request asks Supabase whether the session still exists. No student-identified data should be sent to this service until Q6
@@ -56,6 +64,8 @@ from event_log import EventLog
 from formula_kb import ALL_CARDS
 from jwt_auth import verify_token, bearer_token_from_header, TokenError
 import supabase_auth
+import problem_log
+from classifier import GeminiClassifierLLM
 from rate_limit import RateLimiter
 import static_files
 
@@ -70,15 +80,28 @@ _gemini_limiter = RateLimiter(rate_per_minute=8, burst=8)
 
 _log = EventLog()
 
+def _tag_llm():
+    """The tagger's model chain: GEMINI_TAG_MODELS (comma-separated) if set, else the
+    classifier's default. Pinned names only -- '-latest' aliases change without notice."""
+    models = [m.strip() for m in os.environ.get("GEMINI_TAG_MODELS", "").split(",") if m.strip()]
+    return GeminiClassifierLLM(models=models) if models else GeminiClassifierLLM()
+
+
+# Off unless the server holds the Supabase secret key (problem_log.py explains why).
+_problem_log = (problem_log.ProblemLogger(problem_log.SupabaseLogStore(), llm=_tag_llm())
+                if problem_log.configured() else None)
+
 API_GET = ("/health", "/cards", "/stats")
 
 
 def _llm():
     """Use every provider that has a key, in order: Gemini, then Claude.
-    Falls back to the next one if a call fails. Ollama only if no keys are set."""
+    Falls back to the next one if a call fails. Ollama only if no keys are set.
+    GEMINI_PARSE_MODEL overrides the Gemini model (e.g. when the default's quota is used up)."""
     chain = []
     if os.environ.get("GEMINI_API_KEY"):
-        chain.append(GeminiLLM())
+        model = os.environ.get("GEMINI_PARSE_MODEL")
+        chain.append(GeminiLLM(model=model) if model else GeminiLLM())
     if os.environ.get("ANTHROPIC_API_KEY"):
         chain.append(ClaudeLLM())
     if not chain:
@@ -101,8 +124,12 @@ def api_cards():
 
 
 def api_stats():
-    return {"routes": _log.route_split(), "latency": _log.latency_summary(),
-            "coverage_gaps": len(_log.coverage_gaps())}
+    stats = {"routes": _log.route_split(), "latency": _log.latency_summary(),
+             "coverage_gaps": len(_log.coverage_gaps())}
+    if _problem_log:         # counts only -- no problem text
+        stats["problem_log"] = {"pending": _problem_log.pending(), "dropped": _problem_log.dropped,
+                                "outcomes": dict(_problem_log.outcomes)}
+    return stats
 
 
 def api_solve(body):
@@ -111,6 +138,8 @@ def api_solve(body):
                         session_id=body.get("session_id", "web"),
                         render=body.get("render", "solve"))
     d = result.to_dict()
+    if _problem_log:         # queued, not awaited: the answer goes back right away
+        _problem_log.submit(body.get("query", ""), dict(d))
     d.pop("trace", None)     # too large for a UI response; still in the event log
     return d
 
@@ -147,21 +176,27 @@ def _authenticate(handler):
       2. a Supabase session token (a signed-in user) -- checked by supabase_auth, only
          when SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY are set.
     A refused token is a 401. Supabase being unreachable is a 503 -- the caller's session
-    may be fine, so telling them it isn't would be wrong."""
+    may be fine, so telling them it isn't would be wrong.
+
+    On success, who called is left on `handler.caller` for endpoints that need it:
+    {"kind": "minted", "sub": ...} or {"kind": "supabase", "id": ..., "email": ...}, plus
+    the raw token (used only to look up the role -- never logged or returned)."""
     try:
         token = bearer_token_from_header(handler.headers.get("Authorization", ""))
     except TokenError as e:
         handler._send(401, {"error": f"unauthorized: {e}"})
         return False
     try:
-        verify_token(token)
+        claims = verify_token(token)
+        handler.caller = {"kind": "minted", "sub": claims.get("sub"), "token": token}
         return True
     except TokenError as e:
         if not supabase_auth.configured():
             handler._send(401, {"error": f"unauthorized: {e}"})
             return False
     try:
-        supabase_auth.verify_supabase_token(token)
+        user = supabase_auth.verify_supabase_token(token)
+        handler.caller = {"kind": "supabase", **user, "token": token}
         return True
     except TokenError as e:
         handler._send(401, {"error": f"unauthorized: {e}"})
@@ -170,6 +205,16 @@ def _authenticate(handler):
         print(f"[auth] Supabase check failed: {e}", file=sys.stderr)
         handler._send(503, {"error": "Sign-in can't be checked right now. Try again in a minute."})
         return False
+
+
+def api_me(caller):
+    """GET /me: who the caller is and their role, so the frontend can decide what to show
+    (e.g. admin features). Minted tokens are operator tokens with no Supabase account, so
+    they have no role. Raises supabase_auth.AuthUnavailable if the role can't be looked up."""
+    if caller["kind"] == "minted":
+        return {"kind": "minted", "sub": caller["sub"], "role": None}
+    return {"kind": "supabase", "id": caller["id"], "email": caller["email"],
+            "role": supabase_auth.fetch_role(caller["token"])}
 
 
 class BadRequest(Exception):
@@ -417,6 +462,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, api_cards())
             if path == "/stats":
                 return self._send(200, api_stats())
+            if path == "/me":
+                if not _authenticate(self):
+                    return
+                try:
+                    return self._send(200, api_me(self.caller))
+                except supabase_auth.AuthUnavailable as e:
+                    print(f"[auth] role lookup failed: {e}", file=sys.stderr)
+                    return self._send(503, {"error": "Your role can't be checked right now. Try again in a minute."})
             if path == "/" and not static_files.built():
                 return self._send(200, INDEX, "text/html; charset=utf-8")
             hit = static_files.resolve(path)     # "/" -> dist/index.html when built
@@ -496,6 +549,8 @@ def main():
         print("WARNING: no auth configured. Every /solve, /parse and /grade call will 401.")
         print("         Set SUPABASE_URL + SUPABASE_PUBLISHABLE_KEY for Supabase sign-in,")
         print("         or JWT_SECRET and mint a token with: python3 mint_token.py --sub you")
+    print(f"Problem log: on (Supabase problems_log; tag models: {', '.join(_problem_log.llm.models)})"
+          if _problem_log else "Problem log: off (set SUPABASE_SECRET_KEY to store and tag solved problems)")
     print(f"Listening on http://localhost:{port}")
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
 

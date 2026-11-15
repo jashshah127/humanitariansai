@@ -79,3 +79,28 @@ def verify_supabase_token(token, fetch=None):
         # 403 session_not_found = signed out; 401/403 bad_jwt = expired or forged.
         raise TokenError("Supabase session is not valid (expired or signed out)")
     raise AuthUnavailable(f"Supabase Auth answered {status}")
+
+
+def fetch_role(token, fetch=None):
+    """Returns the signed-in user's role from public.profiles ("user" or "admin"), or None
+    if they have no profile. Raises AuthUnavailable if the database can't be asked.
+
+    Reads with the USER's own token, not the secret key: the profiles policy lets a user
+    read only their own row, so this cannot reveal anyone else's role. Called only where a
+    role is needed (e.g. GET /me), so ordinary requests don't pay for a second round-trip."""
+    if not configured():
+        raise AuthUnavailable("SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY not set")
+    url = os.environ["SUPABASE_URL"].rstrip("/") + "/rest/v1/profiles?select=role"
+    headers = {"apikey": os.environ["SUPABASE_PUBLISHABLE_KEY"],
+               "Authorization": f"Bearer {token}"}
+    try:
+        status, body = (fetch or _urllib_fetch)(url, headers, TIMEOUT_S)
+    except (TimeoutError, urllib.error.URLError, ConnectionError, OSError) as e:
+        raise AuthUnavailable(f"could not reach Supabase: {type(e).__name__}")
+    if status != 200:
+        raise AuthUnavailable(f"profile lookup answered {status}")
+    try:
+        rows = json.loads(body)
+    except ValueError:
+        raise AuthUnavailable("unexpected response from profile lookup")
+    return rows[0].get("role") if rows else None

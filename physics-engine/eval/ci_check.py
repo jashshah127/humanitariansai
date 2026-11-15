@@ -280,6 +280,359 @@ def server_auth_paths():
     return True, "minted + Supabase tokens accepted; bad -> 401; Supabase down -> 503; minted never calls Supabase"
 
 
+def me_reports_role():
+    """GET /me must report who called and their role: a Supabase user's role comes from
+    their own profile; a minted (operator) token has no role; a failed lookup is not a 'user'."""
+    sys.path.insert(0, os.path.join(HERE, ".."))
+    import server
+    import supabase_auth
+    from jwt_auth import create_token
+
+    class FakeHandler:
+        def __init__(self, auth):
+            self.headers = {"Authorization": auth}
+            self.status = None
+
+        def _send(self, code, payload):
+            self.status = code
+
+    profile_reply = {"value": (200, b'[{"role": "admin"}]')}
+
+    def fake_fetch(url, headers, timeout):
+        if url.endswith("/auth/v1/user"):
+            return 200, b'{"id": "u1", "email": "admin@test.dev"}'
+        if "/rest/v1/profiles" in url:
+            r = profile_reply["value"]
+            if isinstance(r, Exception):
+                raise r
+            return r
+        return 404, b"{}"
+
+    def me(auth):
+        h = FakeHandler(auth)
+        if not server._authenticate(h):
+            return ("status", h.status)
+        return server.api_me(h.caller)
+
+    real_fetch, supabase_auth._urllib_fetch = supabase_auth._urllib_fetch, fake_fetch
+    try:
+        with _EnvPatch(JWT_SECRET="ci-secret", SUPABASE_URL="http://supabase.test",
+                       SUPABASE_PUBLISHABLE_KEY="pk"):
+            got_admin = me("Bearer supabase-token")
+            profile_reply["value"] = (200, b'[{"role": "user"}]')
+            got_user = me("Bearer supabase-token")
+            profile_reply["value"] = (200, b"[]")
+            got_none = me("Bearer supabase-token")
+            got_minted = me("Bearer " + create_token({"sub": "ci"}, expires_in=60))
+            profile_reply["value"] = TimeoutError()
+            try:
+                me("Bearer supabase-token")
+                got_down = "no error"
+            except supabase_auth.AuthUnavailable:
+                got_down = "unavailable"
+    finally:
+        supabase_auth._urllib_fetch = real_fetch
+
+    checks = {
+        "admin": (got_admin, {"kind": "supabase", "id": "u1", "email": "admin@test.dev", "role": "admin"}),
+        "user": (got_user.get("role") if isinstance(got_user, dict) else got_user, "user"),
+        "no profile": (got_none.get("role") if isinstance(got_none, dict) else got_none, None),
+        "minted": (got_minted, {"kind": "minted", "sub": "ci", "role": None}),
+        "lookup down": (got_down, "unavailable"),
+    }
+    wrong = {k: got for k, (got, want) in checks.items() if got != want}
+    if wrong:
+        return False, f"wrong /me result for: {wrong}"
+    return True, "admin/user role from own profile; minted -> no role; lookup failure -> unavailable"
+
+
+def classifier_labels_match_db():
+    """The classifier's allowed (topic, subtopic) pairs must be exactly the rows the
+    problems_log migration seeds into public.topics -- otherwise tags fail the foreign key."""
+    import re
+    from classifier import TOPIC_PAIRS
+    path = os.path.join(HERE, "..", "supabase", "migrations", "20261022164924_problems_log.sql")
+    seeded = set(re.findall(r"\('([^']+)', '([^']+)'\)", open(path).read()))
+    ours = set(TOPIC_PAIRS)
+    if ours != seeded:
+        return False, f"only in classifier: {sorted(ours - seeded)}; only in db: {sorted(seeded - ours)}"
+    return True, f"{len(ours)} pairs, identical to the topics table seed"
+
+
+def classifier_rules():
+    """Card label wins; disagreement, Other and invalid pairs are flagged; a failed model
+    still yields the card's topic; no card + failed model -> ClassifyError."""
+    import json
+    from classifier import classify, ClassifyError
+    from pipeline import solve_physics_problem
+    atwood = solve_physics_problem("c", "atwood", {"m1": 4, "m2": 6, "g": 9.8}, ["a", "T"],
+                                   topic_hint="Mechanics")
+
+    def model(**tags):
+        reply = {"grade_level": "intro_undergrad", "difficulty": "easy", "confidence": 0.9, **tags}
+        return lambda prompt, schema: (json.dumps(reply), "fake-model")
+
+    def failing(prompt, schema):
+        raise ClassifyError("down")
+
+    cases = {}
+    r = classify("pulley", atwood, model(topic="Mechanics", subtopic="Dynamics"))
+    cases["card, model agrees"] = ((r.topic, r.subtopic, r.source, r.needs_review, r.grade_level),
+                                   ("Mechanics", "Dynamics", "engine_card", False, "intro_undergrad"))
+    r = classify("pulley", atwood, model(topic="E&M", subtopic="Circuits"))
+    cases["card, model disagrees"] = ((r.topic, r.subtopic, r.needs_review), ("Mechanics", "Dynamics", True))
+    r = classify("pulley", atwood, failing)
+    cases["card, model down"] = ((r.topic, r.grade_level, r.source), ("Mechanics", None, "engine_card"))
+    r = classify("charged ball", None, model(topic="E&M", subtopic="Electrostatics"))
+    cases["no card, valid pair"] = ((r.topic, r.subtopic, r.source, r.needs_review),
+                                    ("E&M", "Electrostatics", "llm", False))
+    r = classify("hydrogen", None, model(topic="Other", subtopic="Other"))
+    cases["no card, Other"] = ((r.topic, r.needs_review), ("Other", True))
+    r = classify("x", None, model(topic="Mechanics", subtopic="Circuits"))
+    cases["no card, invalid pair"] = ((r.topic, r.subtopic, r.needs_review), ("Other", "Other", True))
+    r = classify("x", None, model(topic="Mechanics", subtopic="Kinematics", grade_level="phd"))
+    cases["unknown grade dropped"] = (r.grade_level, None)
+    try:
+        classify("x", None, failing)
+        cases["no card, model down"] = ("no error", "ClassifyError")
+    except ClassifyError:
+        cases["no card, model down"] = ("ClassifyError", "ClassifyError")
+
+    wrong = {k: got for k, (got, want) in cases.items() if got != want}
+    if wrong:
+        return False, f"wrong for: {wrong}"
+    return True, "card label wins; disagreement/Other/invalid pair flagged; failures handled"
+
+
+def classifier_model_failures():
+    """Retry 503 and timeouts, skip a model on 429/404, stop on other errors -- offline."""
+    import json
+    from classifier import GeminiClassifierLLM, ClassifyError
+    ok = (200, json.dumps({"candidates": [{"content": {"parts": [{"text": "{}"}]}}]}).encode())
+
+    def run(script):
+        """script: {model: [reply, reply, ...]}; returns (result, calls in order)."""
+        calls = []
+
+        def post(url, body, headers, timeout):
+            model = url.split("/models/")[1].split(":")[0]
+            calls.append(model)
+            r = script[model].pop(0)
+            if isinstance(r, Exception):
+                raise r
+            return r
+
+        llm = GeminiClassifierLLM(models=list(script), waits=(0, 0), post=post, sleep=lambda s: None)
+        try:
+            return llm("p", {})[1], calls
+        except ClassifyError as e:
+            return f"error: {str(e)[:40]}", calls
+
+    with _EnvPatch(GEMINI_API_KEY="test-key"):
+        cases = {
+            "503 then ok": (run({"m1": [(503, b""), ok]}), ("m1", ["m1", "m1"])),
+            "timeout then ok": (run({"m1": [TimeoutError(), ok]}), ("m1", ["m1", "m1"])),
+            "429 skips model": (run({"m1": [(429, b"")], "m2": [ok]}), ("m2", ["m1", "m2"])),
+            "404 skips model": (run({"m1": [(404, b"")], "m2": [ok]}), ("m2", ["m1", "m2"])),
+            "503 x3 then next": (run({"m1": [(503, b"")] * 3, "m2": [ok]}), ("m2", ["m1", "m1", "m1", "m2"])),
+        }
+        res, calls = run({"m1": [(400, b"")], "m2": [ok]})
+        cases["400 stops at once"] = ((res.startswith("error"), calls), (True, ["m1"]))
+
+        # Circuit breaker: one llm, several calls, a fake clock.
+        now = {"t": 0.0}
+        calls = []
+
+        def post(url, body, headers, timeout):
+            model = url.split("/models/")[1].split(":")[0]
+            calls.append(model)
+            if model == "m1":
+                raise TimeoutError()          # m1 never answers
+            return ok
+
+        llm = GeminiClassifierLLM(models=["m1", "m2"], waits=(0, 0), post=post, sleep=lambda s: None,
+                                  cooldown=300, clock=lambda: now["t"])
+        llm("p", {})
+        first = list(calls); calls.clear()
+        llm("p", {})                           # m1 failed recently -> straight to m2
+        second = list(calls); calls.clear()
+        now["t"] = 301                         # cooldown over -> m1 gets another chance
+        llm("p", {})
+        third = list(calls)
+        cases["circuit: 1st call retries m1 then m2"] = (first, ["m1", "m1", "m1", "m2"])
+        cases["circuit: 2nd call skips m1"] = (second, ["m2"])
+        cases["circuit: after cooldown, m1 retried"] = (third[0], "m1")
+    wrong = {k: got for k, (got, want) in cases.items() if got != want}
+    if wrong:
+        return False, f"wrong for: {wrong}"
+    return True, "503/timeout retried; 429/404 skip model; other errors stop; failed model skipped during cooldown"
+
+
+def redaction_rules():
+    """Personal details are replaced and counted; physics numbers are never touched;
+    a second pass changes nothing."""
+    from redact import redact
+    pii = {
+        "Email jane.doe+hw@husky.neu.edu now": ("Email [EMAIL] now", 1),
+        "See https://drive.google.com/d/abc?x=1, then": ("See [LINK], then", 1),
+        "Call 617-555-1234.": ("Call [PHONE].", 1),
+        "Call (617) 555-1234": ("Call [PHONE]", 1),
+        "Call +1 617 555 1234": ("Call [PHONE]", 1),
+        "My NUID is 002123456.": ("My NUID is [ID].", 1),
+        "SSN 123-45-6789": ("SSN [ID]", 1),
+        "I'm jane@uni.edu, NUID 002123456, cell 617.555.1234: a 2 kg block":
+            ("I'm [EMAIL], NUID [ID], cell [PHONE]: a 2 kg block", 3),
+    }
+    physics = [
+        "A 1500-kg car accelerates at 9.8 m/s^2 for 12.5 s.",
+        "c = 300000000 m/s and G = 6.67e-11 N m^2/kg^2",
+        "Charges q1 = +3.0e-6 C and q2 = -2.0e-6 C, 0.050 m apart; range 1.2-3.4 m.",
+        "Voltage 120 V, 60 Hz, 2023-11-03 lab, resistors 100 200 3000 ohm",
+    ]
+    wrong = {s: redact(s) for s, want in pii.items() if redact(s) != want}
+    wrong.update({s: redact(s) for s in physics if redact(s) != (s, 0)})
+    wrong.update({s: "second pass changed it" for s, (out, _) in pii.items() if redact(out) != (out, 0)})
+    if wrong:
+        return False, f"wrong for: {wrong}"
+    return True, "emails/links/phones/IDs replaced and counted; physics numbers untouched; second pass is a no-op"
+
+
+def model_settings():
+    """GEMINI_PARSE_MODEL / GEMINI_TAG_MODELS override the pinned models; unset keeps
+    the defaults unchanged."""
+    sys.path.insert(0, os.path.join(HERE, ".."))
+    import server
+    from parse import GeminiLLM
+    from classifier import GeminiClassifierLLM
+    with _EnvPatch(GEMINI_API_KEY="k", ANTHROPIC_API_KEY=None, GEMINI_PARSE_MODEL=None, GEMINI_TAG_MODELS=None):
+        cases = {"parse default": (server._llm().model, GeminiLLM().model),
+                 "tag default": (server._tag_llm().models, GeminiClassifierLLM().models)}
+    with _EnvPatch(GEMINI_API_KEY="k", ANTHROPIC_API_KEY=None, GEMINI_PARSE_MODEL="p-model",
+                   GEMINI_TAG_MODELS=" t1, t2 ,"):
+        cases["parse override"] = (server._llm().model, "p-model")
+        cases["tag override"] = (server._tag_llm().models, ["t1", "t2"])
+    wrong = {k: got for k, (got, want) in cases.items() if got != want}
+    if wrong:
+        return False, f"wrong for: {wrong}"
+    return True, "overrides apply when set; defaults unchanged when unset"
+
+
+def problem_logging_rules():
+    """Each solve is stored cleaned and untagged first, then tagged; a model failure leaves
+    it untagged; the worker survives errors and drops (never blocks) when its queue is full;
+    /solve hands the log the full result but still strips the trace from its reply."""
+    import json
+    import threading
+    from problem_log import ProblemLogger, build_row, log_and_tag, configured
+    from classifier import ClassifyError
+    from pipeline import solve_physics_problem
+
+    class FakeStore:
+        def __init__(self, fail=False, gate=None):
+            self.inserts, self.updates, self.fail, self.gate = [], [], fail, gate
+
+        def insert(self, row):
+            if self.gate:
+                self.gate.wait(5)
+            if self.fail:
+                self.fail = False                 # fail once, then work
+                raise RuntimeError("database down")
+            self.inserts.append(row)
+            return f"id{len(self.inserts)}"
+
+        def update(self, row_id, fields):
+            self.updates.append((row_id, fields))
+
+    def llm_ok(prompt, schema):
+        return json.dumps({"topic": "Mechanics", "subtopic": "Dynamics", "grade_level": "high_school",
+                           "difficulty": "easy", "confidence": 0.9}), "m1"
+
+    def llm_down(prompt, schema):
+        raise ClassifyError("all models failed")
+
+    atwood = {"verification": "verified",
+              "trace": solve_physics_problem("c", "atwood", {"m1": 4, "m2": 6, "g": 9.8}, ["a", "T"],
+                                             topic_hint="Mechanics")}
+    unsolved = {"verification": "unverified", "trace": {"route": "no_deterministic_path"}}
+    cases = {}
+
+    row, clean = build_row("mail a@b.co: Atwood 4 kg, 6 kg", atwood)
+    cases["row is cleaned, counted, card recorded"] = (
+        (row["problem_text"], row["redactions"], row["verification"], row.get("matched_card")),
+        ("mail [EMAIL]: Atwood 4 kg, 6 kg", 1, "verified", "MECH-DYN-ATWOOD"))
+    cases["no card -> no matched_card"] = ("matched_card" in build_row("x", unsolved)[0], False)
+
+    s = FakeStore()
+    cases["tagged: insert then update with tags"] = (
+        (log_and_tag("Atwood", atwood, s, llm_ok), len(s.inserts), s.updates[0][1]["tag_source"]
+         if s.updates else None), ("tagged", 1, "engine_card"))
+    s = FakeStore()
+    cases["model down + no card -> stored untagged"] = (
+        (log_and_tag("a quantum question", unsolved, s, llm_down), len(s.inserts), len(s.updates)),
+        ("untagged", 1, 0))
+    s = FakeStore()
+    cases["empty query -> nothing stored"] = ((log_and_tag("  ", unsolved, s, llm_ok), s.inserts), ("skipped", []))
+
+    s = FakeStore(fail=True)
+    logger = ProblemLogger(s, llm=llm_ok)
+    logger.submit("first", atwood)                # store raises on this one
+    logger.submit("second", atwood)
+    logger.wait()
+    cases["worker survives an error and keeps going"] = (logger.outcomes, {"failed": 1, "tagged": 1})
+
+    gate = threading.Event()
+    s = FakeStore(gate=gate)
+    logger = ProblemLogger(s, llm=llm_ok, maxsize=1)
+    for i in range(4):                            # worker holds 1, queue holds 1, rest dropped
+        logger.submit(f"p{i}", atwood)
+        if i == 0:
+            for _ in range(100):                  # let the worker pick up the first one
+                if logger._q.empty():
+                    break
+                threading.Event().wait(0.01)
+    cases["full queue drops instead of blocking"] = (logger.dropped, 2)
+    gate.set()
+    logger.wait()
+
+    with _EnvPatch(SUPABASE_URL="http://supabase.test", SUPABASE_SECRET_KEY=None):
+        cases["off without the secret key"] = (configured(), False)
+
+    sys.path.insert(0, os.path.join(HERE, ".."))
+    import server
+
+    class FakeMode:
+        def __init__(self, *a, **k):
+            pass
+
+        def solve(self, query, **k):
+            return type("R", (), {"to_dict": lambda self: dict(atwood, route="deterministic_script")})()
+
+    class Recorder:
+        def __init__(self):
+            self.got = []
+
+        def submit(self, query, result):
+            self.got.append((query, "trace" in result))
+
+    saved = server.PhysicsEngineMode, server._llm, server._problem_log
+    try:
+        server.PhysicsEngineMode, server._llm = FakeMode, lambda: None
+        server._problem_log = rec = Recorder()
+        reply = server.api_solve({"query": "Atwood 4 kg 6 kg"})
+        cases["/solve: log gets query + trace, reply has no trace"] = (
+            (rec.got, "trace" in reply), ([("Atwood 4 kg 6 kg", True)], False))
+        server._problem_log = None
+        cases["/solve works with logging off"] = (server.api_solve({"query": "q"})["verification"], "verified")
+    finally:
+        server.PhysicsEngineMode, server._llm, server._problem_log = saved
+
+    wrong = {k: got for k, (got, want) in cases.items() if got != want}
+    if wrong:
+        return False, f"wrong for: {wrong}"
+    return True, ("stored cleaned + untagged, then tagged; model down -> untagged; worker survives errors; "
+                  "full queue drops; /solve never waits")
+
+
 def identity_scoping_enforced():
     from event_log import EventLog, ScopeViolation
     log = EventLog()
@@ -324,6 +677,15 @@ if __name__ == "__main__":
     print("\nAuth invariants")
     check("Supabase token rules", supabase_token_rules)
     check("server auth paths", server_auth_paths)
+    check("GET /me reports role", me_reports_role)
+    print("\nClassifier invariants")
+    check("classifier labels match the topics table", classifier_labels_match_db)
+    check("classifier rules", classifier_rules)
+    check("classifier model failures", classifier_model_failures)
+    print("\nLogging invariants")
+    check("redaction rules", redaction_rules)
+    check("problem logging", problem_logging_rules)
+    check("model settings", model_settings)
 
     print()
     if failures:
