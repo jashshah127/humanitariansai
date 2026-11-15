@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router";
-import { ApiError, isAbort, loadToken, saveToken } from "../../api/client.ts";
+import { useNavigate, useSearchParams } from "react-router";
+import { ApiError, isAbort } from "../../api/client.ts";
+import { useAuth } from "../auth/AuthContext.ts";
 import { grade, parseForGrading } from "../../api/grade.ts";
 import { solve } from "../../api/solve.ts";
 import type { GradeResponse, ParseResponse, SolveResponse } from "../../api/types.ts";
@@ -24,7 +25,8 @@ export default function WorkspacePage() {
   const mode = parseMode(params.get("mode"));
 
   const [query, setQuery] = useState("");
-  const [token, setToken] = useState(loadToken);
+  const { token, session, signOut } = useAuth();
+  const navigate = useNavigate();
   const [result, setResult] = useState<SolveResponse | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [loading, setLoading] = useState(false);
@@ -46,8 +48,6 @@ export default function WorkspacePage() {
   const [graded, setGraded] = useState<GradeResponse | null>(null);
   const [gradedId, setGradedId] = useState(0);
   const [wrongAttempts, setWrongAttempts] = useState(0);
-  // Read once: if <details open> followed `token`, it would snap shut on the first keystroke.
-  const [tokenOpenAtStart] = useState(() => !loadToken());
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -79,12 +79,6 @@ export default function WorkspacePage() {
     );
   }
 
-  function changeToken(value: string) {
-    const t = value.trim();
-    setToken(t);
-    saveToken(t);
-  }
-
   /**
    * Runs one request with the shared loading, slow-notice, cancel and error handling.
    * A new request cancels the one in flight. The old result stays on screen, dimmed,
@@ -103,6 +97,10 @@ export default function WorkspacePage() {
     } catch (e) {
       if (isAbort(e)) return;
       onFail?.();
+      if (e instanceof ApiError && e.kind === "auth") {
+        void signOut().then(() => navigate("/login?reason=expired", { replace: true }));
+        return;
+      }
       setError(
         e instanceof ApiError ? e : new ApiError("network", "Something went wrong. Try again."),
       );
@@ -153,6 +151,12 @@ export default function WorkspacePage() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
+        <div className={styles.account}>
+          {session?.user.email && <span className={styles.accountEmail}>{session.user.email}</span>}
+          <Button variant="ghost" size="sm" onClick={() => void signOut()}>
+            Sign out
+          </Button>
+        </div>
         <h1 className={styles.title}>Physics Engine</h1>
         <p className={styles.lead}>
           Every answer says whether it was checked by a symbolic solver, or admits it wasn’t.
@@ -208,20 +212,6 @@ export default function WorkspacePage() {
           </p>
         )}
       </section>
-
-      <details className={styles.token} open={tokenOpenAtStart}>
-        <summary>Access token (developer setup)</summary>
-        <input
-          className={styles.tokenInput}
-          type="password"
-          value={token}
-          onChange={(e) => changeToken(e.target.value)}
-          placeholder="Paste a token from mint_token.py"
-          aria-label="Access token"
-          autoComplete="off"
-          spellCheck={false}
-        />
-      </details>
     </main>
   );
 }

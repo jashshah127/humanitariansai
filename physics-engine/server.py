@@ -199,6 +199,13 @@ def _authenticate(handler):
         handler.caller = {"kind": "supabase", **user, "token": token}
         return True
     except TokenError as e:
+        if not supabase_auth.configured():
+            handler._send(401, {"error": f"unauthorized: {e}"})
+            return False
+    try:
+        supabase_auth.verify_supabase_token(token)
+        return True
+    except TokenError as e:
         handler._send(401, {"error": f"unauthorized: {e}"})
         return False
     except supabase_auth.AuthUnavailable as e:
@@ -225,6 +232,7 @@ class BadRequest(Exception):
 # different quantities. Keyed by the matched card's unit, which says which one it is.
 _AMBIGUOUS_LABELS = {
     "T": {"N": "tension in the string", "s": "period"},
+    "I": {"kg*m^2": "moment of inertia", "A": "current in the wire"},
 }
 
 _NOT_GRADABLE = {

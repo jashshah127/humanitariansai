@@ -1,0 +1,54 @@
+name: health-check
+
+# Hourly check that both services answer /health. If a check fails twice in a row (one retry
+# after 45 s, because free Render services take up to a minute to wake), the run fails and
+# GitHub emails whoever last edited this schedule. Free services stay awake for about 15
+# minutes after each check, so hourly checks of two services use roughly 360 of the 750 free
+# instance hours a month. To pause: Actions tab, health-check, "..." menu, Disable workflow.
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      force_fail:
+        description: "Test the alert: probe a path that does not exist, so the run fails"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: live (main)
+            url: https://physics-engine-hr0x.onrender.com
+          - name: staging
+            url: https://physics-engine-staging.onrender.com
+    steps:
+      - name: Check /health on ${{ matrix.name }}
+        env:
+          SERVICE_URL: ${{ matrix.url }}
+          FORCE_FAIL: ${{ inputs.force_fail }}
+        run: |
+          path="/health"
+          if [ "$FORCE_FAIL" = "true" ]; then path="/does-not-exist"; fi
+          check() {
+            curl -sS --max-time 100 -w '\nHTTP %{http_code} in %{time_total}s\n' "${SERVICE_URL}${path}" > out.txt 2> err.txt || true
+            grep -Eq '"status": *"ok"' out.txt
+          }
+          if check; then ok=1; else sleep 45; if check; then ok=1; else ok=0; fi; fi
+          {
+            echo "### ${{ matrix.name }}: $([ "$ok" = 1 ] && echo healthy || echo FAILED)"
+            echo '```'
+            cat out.txt err.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat out.txt err.txt
+          [ "$ok" = 1 ]
