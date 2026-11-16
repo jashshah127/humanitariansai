@@ -21,12 +21,10 @@ Planned hours: 32 (milestone 4, React frontend 24, Supabase/redesign proposal 4)
 
 **What Claude or another person contributed — accepted, changed, rejected**
 - Claude wrote the nine frontend files, `static_files.py` and the `server.py` patch; I recreated them in PyCharm and tested.
-- Claude drafted the Supabase/redesign email; I sent it.
 
 **What I understand now, and what I still don't**
 - Understand: `dist/` must be built and committed last, because Render does not build the frontend.
 - Open: this JSX frontend was later replaced by the TypeScript one (week 03). Part of this week's work did not survive.
-- Open: milestone sign-off not yet recorded on the plan.
 
 **Evidence**
 - https://github.com/jashshah127/humanitariansai: `frontend/`, `engine/static_files.py`, `server.py`
