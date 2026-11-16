@@ -204,7 +204,7 @@ Schema changes are migration files in `supabase/migrations/`, applied in order:
 2. `20261022164924_problems_log.sql` — `topics`, `is_admin()`, `problems_log`
 3. `20261103224949_role_assignment.sql` — `set_user_role()`, `admin_list_users()`
 4. `20261104040000_problems_log_tagging.sql` — tagging columns on `problems_log`
-5. `20261115220000_problems_log_admin_edits.sql` — admin tag edits for the history page: column privileges, update policy, edit stamp, valid grade/difficulty values (local only so far)
+5. `20261115220000_problems_log_admin_edits.sql` — admin tag edits for the history page: column privileges, update policy, edit stamp, valid grade/difficulty values
 
 Locally, `npx supabase@2.121.0 db reset` rebuilds the database from these files. For the hosted project:
 `db push --dry-run` first, then `db push`. Add a new migration for every change; never edit one that has been applied
