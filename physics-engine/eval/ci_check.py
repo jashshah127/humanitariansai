@@ -632,6 +632,74 @@ def problem_logging_rules():
     return True, ("stored cleaned + untagged, then tagged; model down -> untagged; worker survives errors; "
                   "full queue drops; /solve never waits")
 
+def spa_deep_links():
+    """Page routes (/login, /reset-password, /app/history/42) must get index.html so React
+    Router can show them on refresh or from an email link. A missing file must still 404,
+    and API routes must still answer as API routes."""
+    import json
+    import tempfile
+    sys.path.insert(0, os.path.join(HERE, ".."))
+    import server
+    import static_files
+
+    class FakeHandler:
+        def __init__(self, path):
+            self.path, self.headers = path, {}
+            self.status = self.ctype = self.body = None
+
+        def _send(self, code, payload, content_type="application/json"):
+            raw = payload if isinstance(payload, str) else json.dumps(payload, default=str)
+            self._send_bytes(code, raw.encode(), content_type)
+
+        def _send_bytes(self, code, data, content_type):
+            self.status, self.body, self.ctype = code, data, content_type
+
+    def get(path):
+        h = FakeHandler(path)
+        server.Handler.do_GET(h)
+        return h
+
+    index = b"<!doctype html><div id='root'></div>"
+    cases = {}
+    saved = static_files.DIST
+    try:
+        # 1. A built frontend: a fake dist/ with index.html and one asset.
+        with tempfile.TemporaryDirectory() as tmp:
+            dist = os.path.realpath(tmp)
+            os.makedirs(os.path.join(dist, "assets"))
+            with open(os.path.join(dist, "index.html"), "wb") as f:
+                f.write(index)
+            with open(os.path.join(dist, "assets", "app.js"), "wb") as f:
+                f.write(b"console.log(1)")
+            static_files.DIST = dist
+
+            for p in ("/", "/login", "/reset-password", "/app/history",
+                      "/app/history/42", "/login?next=/app"):
+                h = get(p)
+                cases[f"{p} -> index.html"] = ((h.status, h.body), (200, index))
+            h = get("/assets/app.js")
+            cases["real file served"] = ((h.status, (h.ctype or "").split(";")[0]),
+                                         (200, "text/javascript"))
+            for p in ("/assets/missing.js", "/favicon.ico", "/../server.py"):
+                cases[f"{p} -> 404"] = (get(p).status, 404)
+            h = get("/cards")
+            cases["/cards still JSON"] = ((h.status, h.ctype), (200, "application/json"))
+            cases["/me without token -> 401"] = (get("/me").status, 401)
+
+        # 2. No build: the inline page at /, and no fallback anywhere else.
+        with tempfile.TemporaryDirectory() as empty:
+            static_files.DIST = os.path.realpath(empty)
+            h = get("/")
+            cases["no build: / -> inline page"] = ((h.status, (h.ctype or "").split(";")[0]),
+                                                   (200, "text/html"))
+            cases["no build: /login -> 404"] = (get("/login").status, 404)
+    finally:
+        static_files.DIST = saved
+
+    wrong = {k: got for k, (got, want) in cases.items() if got != want}
+    if wrong:
+        return False, f"wrong for: {wrong}"
+    return True, "page routes get index.html; missing files 404; API routes untouched"
 
 def identity_scoping_enforced():
     from event_log import EventLog, ScopeViolation
@@ -686,7 +754,8 @@ if __name__ == "__main__":
     check("redaction rules", redaction_rules)
     check("problem logging", problem_logging_rules)
     check("model settings", model_settings)
-
+    print("\nFrontend serving invariants")
+    check("SPA deep links", spa_deep_links)
     print()
     if failures:
         print(f"FAILED: {len(failures)} -> {failures}")

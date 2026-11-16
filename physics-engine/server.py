@@ -475,6 +475,11 @@ class Handler(BaseHTTPRequestHandler):
             hit = static_files.resolve(path)     # "/" -> dist/index.html when built
             if hit:
                 return self._send_bytes(200, *hit)
+                # A page route (/login, /app/history/42): no file extension, so hand it to
+                # React Router. A missing file like /assets/old.js still gets a real 404 --
+                # sending HTML for a script would only cause a confusing browser error.
+            if static_files.built() and "." not in path.rsplit("/", 1)[-1]:
+                return self._send_bytes(200, *static_files.resolve("/index.html"))
             return self._send(404, {"error": "not found"})
         except Exception as e:
             traceback.print_exc()
