@@ -5,6 +5,8 @@ One command, every invariant. Run before any push.
 
 Exits non-zero on any failure, so it can gate a commit hook or an Action.
 """
+import contextlib
+import io
 import os
 import subprocess
 import sys
@@ -16,13 +18,21 @@ failures = []
 
 
 def check(label, fn):
+    # Some checks break things on purpose (a fake database that fails, Supabase timing
+    # out), and the code under test prints what it caught. Hold that output back: show it
+    # only if the check FAILS, where it helps; on a pass it just looks like a crash.
+    err = io.StringIO()
     try:
-        ok, detail = fn()
+        with contextlib.redirect_stderr(err):
+            ok, detail = fn()
     except Exception as e:  # noqa: BLE001 - a crashing check is a failing check
         ok, detail = False, f"{type(e).__name__}: {e}"
     print(f"  [{'PASS' if ok else 'FAIL'}] {label}: {detail}")
     if not ok:
         failures.append(label)
+        if err.getvalue().strip():
+            print("    error output from this check:")
+            print("\n".join("      " + line for line in err.getvalue().rstrip().splitlines()))
 
 
 def golden_set_16():
