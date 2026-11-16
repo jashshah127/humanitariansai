@@ -154,7 +154,7 @@ Every table has RLS **on**. With RLS on and no matching policy, access is denied
 |---|---|---|
 | `profiles` | Own row only | Only via the signup trigger and `set_user_role` |
 | `topics` | Any signed-in user | Nobody through the API (seeded by migration) |
-| `problems_log` | **Admins only** | **Server only** (secret key). No browser can write, not even an admin |
+| `problems_log` | **Admins only** | **Server** writes rows (secret key). **Admins** may edit only `topic`, `subtopic`, `grade_level`, `difficulty`, `needs_review`, `review_reason`; each edit records who and when and sets `tag_source = 'admin'`. No browser can insert or delete rows |
 
 `problems_log` is **de-identified**: no user id, no session id, timestamps rounded to the hour.
 
@@ -203,7 +203,8 @@ Schema changes are migration files in `supabase/migrations/`, applied in order:
 1. `20261015194448_initial_schema.sql` — `app_role`, `profiles`, signup trigger
 2. `20261022164924_problems_log.sql` — `topics`, `is_admin()`, `problems_log`
 3. `20261103224949_role_assignment.sql` — `set_user_role()`, `admin_list_users()`
-4. `20261104040000_problems_log_tagging.sql` — tagging columns on `problems_log` (local only so far)
+4. `20261104040000_problems_log_tagging.sql` — tagging columns on `problems_log`
+5. `20261115220000_problems_log_admin_edits.sql` — admin tag edits for the history page: column privileges, update policy, edit stamp, valid grade/difficulty values (local only so far)
 
 Locally, `npx supabase@2.121.0 db reset` rebuilds the database from these files. For the hosted project:
 `db push --dry-run` first, then `db push`. Add a new migration for every change; never edit one that has been applied
@@ -216,7 +217,7 @@ to a shared database.
 | Suite | Runs | Covers |
 |---|---|---|
 | `eval/ci_check.py` → *Auth invariants* | Offline, in CI on every pull request | Supabase reply mapping; every server auth path (incl. "a minted token never calls Supabase"); `/me` roles |
-| `eval/rls_tests.py` | Against the **local** Supabase (`python3 eval/rls_tests.py`) | 43 checks across `profiles`, `topics`, `problems_log` (including the server's own log writer), `set_user_role`, `admin_list_users`, including one user trying to read or change another's data |
+| `eval/rls_tests.py` | Against the **local** Supabase (`python3 eval/rls_tests.py`) | 57 checks across `profiles`, `topics`, `problems_log` (including the server's own log writer and the admin edit rules), `set_user_role`, `admin_list_users`, including one user trying to read or change another's data |
 
 `rls_tests.py` refuses to run against anything but a local Supabase, and deletes the users and rows it creates.
 

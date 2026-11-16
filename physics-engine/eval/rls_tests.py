@@ -165,7 +165,7 @@ def problems_log_tests(alice, admin):
     st, d = call("POST", "/rest/v1/problems_log", alice[0], LOG_ROW)
     check("normal user cannot write the log (42501)", (st, code(d)), (403, "42501"))
     st, d = call("GET", f"/rest/v1/problems_log?select=id&{tagged}")
-    check("no login: reads 0 rows of the log", (st, len(d)), (200, 0))
+    check("no login: refused, cannot read the log (42501)", (st, code(d)), (401, "42501"))
     st, d = call("GET", f"/rest/v1/problems_log?select=id&{tagged}", admin[0])
     check("admin reads this run's 2 rows", (st, len(d)), (200, 2))
     st, d = call("POST", "/rest/v1/problems_log", admin[0], LOG_ROW)
@@ -212,6 +212,53 @@ def tagging_tests():
     except LogError as e:
         check("server writer: invalid row raises LogError without row contents",
               ("23514" in str(e), "pulley" in str(e)), (True, False))
+
+
+def admin_edit_tests(alice, admin):
+    """The history page's rules: admins fix tags and the review flag; everything else is
+    locked; non-admins and signed-out visitors change nothing. Run while alice is a user."""
+    print("\nproblems_log admin edits (history page)")
+    (a_tok, _), (adm_tok, adm_id) = alice, admin
+    st, d = call("POST", "/rest/v1/problems_log", body={**LOG_ROW, "topic": "Mechanics", "subtopic": "Dynamics",
+                 "tag_source": "llm", "tag_model": "fake-model", "needs_review": True,
+                 "review_reason": "model said E&M / Circuits"}, prefer="return=representation", **SERVER)
+    if st != 201:
+        check("server writes a row to edit", st, 201)
+        return
+    row = f"/rest/v1/problems_log?id=eq.{d[0]['id']}"
+
+    def patch(tok, fields, key=None):
+        st, d = call("PATCH", row, tok, fields, key=key, prefer="return=representation")
+        return st, (len(d) if isinstance(d, list) else code(d))
+
+    def current():
+        return call("GET", row + "&select=*", **SERVER)[1][0]
+
+    check("admin fixes topic/subtopic/grade/difficulty (1 row)",
+          patch(adm_tok, {"topic": "E&M", "subtopic": "Circuits", "grade_level": "intro_undergrad",
+                          "difficulty": "medium"}), (200, 1))
+    r = current()
+    check("  ...stamped: source admin, model cleared, who + when",
+          (r["tag_source"], r["tag_model"], r["tags_edited_by"], r["tags_edited_at"] is not None),
+          ("admin", None, adm_id, True))
+    check("admin clears the review flag (1 row)", patch(adm_tok, {"needs_review": False, "review_reason": None}), (200, 1))
+    check("admin cannot change the problem text (42501)", patch(adm_tok, {"problem_text": "edited"}), (403, "42501"))
+    check("admin cannot change the verification (42501)", patch(adm_tok, {"verification": "verified"}), (403, "42501"))
+    check("admin cannot change the time (42501)", patch(adm_tok, {"created_at": "2026-01-01T00:00:00Z"}), (403, "42501"))
+    check("admin cannot set tag_source by hand (42501)", patch(adm_tok, {"tag_source": "llm"}), (403, "42501"))
+    check("admin cannot store an invalid topic pair (23503)", patch(adm_tok, {"subtopic": "Calorimetry"}), (409, "23503"))
+    check("admin cannot store an unknown grade (23514)", patch(adm_tok, {"grade_level": "kindergarten"}), (400, "23514"))
+    st, d = call("DELETE", row, adm_tok)
+    check("admin cannot delete rows (42501)", (st, code(d)), (403, "42501"))
+    check("normal user's edit changes 0 rows", patch(a_tok, {"topic": "Mechanics", "subtopic": "Dynamics"}), (200, 0))
+    check("signed-out visitor cannot edit (42501)", patch(None, {"needs_review": True})[1], "42501")
+    r = current()
+    check("  ...row unchanged by the refused edits",
+          (r["topic"], r["subtopic"], r["problem_text"], r["verification"], r["needs_review"]),
+          ("E&M", "Circuits", LOG_ROW["problem_text"], "verified", False))
+    st, _ = call("PATCH", row, body={"needs_review": True}, **SERVER)
+    check("server (secret key) still updates, without an admin stamp",
+          (st, current()["tags_edited_by"]), (204, adm_id))
 
 
 def role_tests(alice, bob, admin):
@@ -265,6 +312,7 @@ if __name__ == "__main__":
         topics_tests(alice)
         problems_log_tests(alice, admin)
         tagging_tests()
+        admin_edit_tests(alice, admin)
         role_tests(alice, bob, admin)
     finally:
         sql(f"delete from public.problems_log where problem_text like '{TEXT_TAG}%'")
