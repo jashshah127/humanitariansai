@@ -1,0 +1,75 @@
+name: dependency-audit
+
+# Checks the Python and frontend packages against public lists of known vulnerabilities.
+# Report-only: on a pull request or a push, findings show as a warning and never block a merge,
+# because a new advisory can appear overnight. The weekly run on main DOES fail when it finds
+# something, so GitHub emails whoever last edited this schedule. Scheduled runs are best effort
+# (GitHub delays or skips them on a quiet repository).
+# To make findings block merges later, set FAIL_ON_FINDINGS to "true" below.
+
+on:
+  pull_request:
+    paths:
+      - "physics-engine/requirements.txt"
+      - "physics-engine/frontend/package.json"
+      - "physics-engine/frontend/package-lock.json"
+      - ".github/workflows/dependency-audit.yml"
+  push:
+    branches: [ main, add-dependency-audit ]   # remove add-dependency-audit before opening the pull request
+    paths:
+      - "physics-engine/requirements.txt"
+      - "physics-engine/frontend/package.json"
+      - "physics-engine/frontend/package-lock.json"
+      - ".github/workflows/dependency-audit.yml"
+  schedule:
+    - cron: "41 6 * * 1"        # Mondays, early morning UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Known-vulnerability scan (report only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FAIL_ON_FINDINGS: ${{ github.event_name == 'schedule' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python packages (pip-audit)
+        working-directory: physics-engine
+        run: |
+          pip install pip-audit
+          if pip-audit -r requirements.txt; then
+            echo "pip-audit: no known vulnerabilities" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::pip-audit found known vulnerabilities in the Python packages. See the log above."
+            echo "pip-audit: FOUND vulnerabilities, see the log" >> "$GITHUB_STEP_SUMMARY"
+            if [ "$FAIL_ON_FINDINGS" = "true" ]; then exit 1; fi
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Frontend packages shipped to users (npm audit)
+        working-directory: physics-engine/frontend
+        run: |
+          npm ci --ignore-scripts
+          if npm audit --omit=dev --audit-level=high; then
+            echo "npm audit: no high or critical vulnerabilities in shipped packages" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::npm audit found high or critical vulnerabilities in the packages the site ships. See the log above."
+            echo "npm audit: FOUND vulnerabilities, see the log" >> "$GITHUB_STEP_SUMMARY"
+            if [ "$FAIL_ON_FINDINGS" = "true" ]; then exit 1; fi
+          fi
