@@ -1,5 +1,10 @@
 import { forwardRef, useId } from "react";
-import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
+import type {
+  InputHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from "react";
 import { cx } from "../../utils/cx.ts";
 import styles from "./Input.module.css";
 
@@ -98,6 +103,43 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function 
           )}
           {count && <span className={styles.count}>{count}</span>}
         </div>
+      )}
+    </div>
+  );
+});
+
+export type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & FieldProps;
+
+/** A dropdown with the same label, size and border as Input, so fields line up. */
+export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
+  { label, hint, error, id, className, children, ...rest },
+  ref,
+) {
+  const ids = useFieldIds(id, hint, error);
+  return (
+    <div className={styles.field}>
+      <label htmlFor={ids.controlId} className={styles.label}>
+        {label}
+      </label>
+      {hint && (
+        <p id={ids.hintId} className={styles.hint}>
+          {hint}
+        </p>
+      )}
+      <select
+        ref={ref}
+        id={ids.controlId}
+        className={cx(styles.control, styles.select, className)}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={ids.describedBy}
+        {...rest}
+      >
+        {children}
+      </select>
+      {error && (
+        <p id={ids.errorId} className={styles.error}>
+          {error}
+        </p>
       )}
     </div>
   );

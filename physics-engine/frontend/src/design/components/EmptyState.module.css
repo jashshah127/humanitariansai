@@ -1,0 +1,42 @@
+/* Tokens only. legacy/styles.css styles h1 globally, so margin, size and color
+   are set again on .title. Left-aligned, like the rest of the app. */
+.empty {
+  max-width: 38rem;
+  padding: var(--space-8) 0;
+}
+
+.title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  color: var(--color-text);
+}
+
+.body {
+  color: var(--color-text-muted);
+}
+.body > p {
+  margin: 0 0 var(--space-2);
+}
+
+.action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-6);
+  margin-top: var(--space-4);
+}
+.action a {
+  color: var(--color-brand);
+  font-weight: var(--weight-medium);
+  text-underline-offset: 0.2em;
+}
+.action a:hover {
+  color: var(--color-brand-hover);
+}
+.action a:focus-visible {
+  outline: 2px solid transparent;
+  box-shadow: var(--focus-ring);
+  border-radius: 2px;
+}

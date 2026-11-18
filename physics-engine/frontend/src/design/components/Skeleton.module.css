@@ -1,0 +1,36 @@
+/* Tokens only. A slow pulse, not a sweeping shimmer: calmer, and cheaper to draw. */
+.skeleton {
+  display: block;
+  max-width: 100%;
+  background: var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton[data-shape="line"] {
+  height: 1em;
+}
+.skeleton[data-shape="pill"] {
+  height: 1.75rem;
+  border-radius: var(--radius-full);
+}
+.skeleton[data-shape="block"] {
+  height: 2.5rem;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* No pulsing for people who turned motion off. The grey shapes still show the layout. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

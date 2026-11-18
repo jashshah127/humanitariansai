@@ -20,6 +20,7 @@ Deploy free (Render / Railway / Fly):
     env:    GEMINI_API_KEY, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, JWT_SECRET, PORT
             optional SUPABASE_SECRET_KEY -- turns on problem logging (below)
             optional GEMINI_PARSE_MODEL, GEMINI_TAG_MODELS -- override the pinned models
+            optional GUEST_PROBLEM_LIMIT (default 3), GUEST_DAILY_CAP (default 10) -- guests
 
 FRONTEND: if frontend/dist/ exists (built with `npm run build` in frontend/), it is
 served at / and its asset paths. If it does not exist, the inline INDEX page below is
@@ -65,6 +66,7 @@ from formula_kb import ALL_CARDS
 from jwt_auth import verify_token, bearer_token_from_header, TokenError
 import supabase_auth
 import problem_log
+import guest_limits
 from classifier import GeminiClassifierLLM
 from rate_limit import RateLimiter
 import static_files
@@ -146,9 +148,8 @@ def api_solve(body):
 
 def _rate_limited(handler):
     """Checks the global Gemini quota limiter. Returns True on success; sends a
-    429 with Retry-After and returns False on failure. Currently placed BEFORE auth
-    in the request path (see do_POST). Consequence of that order: requests with a
-    bad or missing token still spend limiter budget before being rejected."""
+    429 with Retry-After and returns False on failure. Runs AFTER auth (see do_POST),
+    so a request with a bad or missing token never spends limiter budget."""
     ok, wait = _gemini_limiter.allow()
     if not ok:
         handler.send_response(429)
@@ -206,15 +207,65 @@ def _authenticate(handler):
         handler._send(503, {"error": "Sign-in can't be checked right now. Try again in a minute."})
         return False
 
+def _env_int(name, default):
+    try:
+        value = int(os.environ.get(name, ""))
+    except ValueError:
+        return default
+    return value if value >= 0 else default
+
+
+_GUEST_REFUSALS = {
+    "guest_limit": "You’ve used all your guest problems. Sign up to keep solving.",
+    "daily_limit": "Guest problems are used up for today. Sign up to keep solving, or try again tomorrow.",
+}
+_GUEST_UNAVAILABLE = "Guest access can’t be checked right now. Try again in a minute, or sign up."
+
+
+def _guest_gate(handler):
+    """Counts one problem for a guest before a model call is spent.
+
+    Returns (True, remaining) for a guest who may go on, (True, None) for everyone else
+    (real users and minted tokens are never counted), or (False, None) after sending the
+    refusal. Fails CLOSED: if the count can't be checked, guests are refused with a 503."""
+    caller = getattr(handler, "caller", None) or {}
+    if caller.get("kind") != "supabase" or not caller.get("is_anonymous"):
+        return True, None
+    try:
+        reply = guest_limits.use_guest_problem(caller["id"], _env_int("GUEST_PROBLEM_LIMIT", 3),
+                                               _env_int("GUEST_DAILY_CAP", 10))
+    except guest_limits.GuestCheckUnavailable as e:
+        print(f"[guest] limit check failed: {e}", file=sys.stderr)
+        handler._send(503, {"error": _GUEST_UNAVAILABLE})
+        return False, None
+    status = reply.get("status")
+    if status == "ok":
+        return True, reply.get("remaining")
+    if status in _GUEST_REFUSALS:
+        handler._send(403, {"error": _GUEST_REFUSALS[status], "guest_limit": status})
+        return False, None
+    print(f"[guest] unexpected limit reply: {status!r}", file=sys.stderr)
+    handler._send(503, {"error": _GUEST_UNAVAILABLE})
+    return False, None
+
+
+def _with_guest(payload, remaining):
+    """Tell a guest how many problems they have left, so the UI can show it."""
+    if remaining is not None:
+        payload["guest_remaining"] = remaining
+    return payload
+
 
 def api_me(caller):
-    """GET /me: who the caller is and their role, so the frontend can decide what to show
-    (e.g. admin features). Minted tokens are operator tokens with no Supabase account, so
-    they have no role. Raises supabase_auth.AuthUnavailable if the role can't be looked up."""
+    """GET /me: who the caller is, their role, and whether they're a guest. Minted tokens
+    and guests have no role (guests skip the lookup). Raises supabase_auth.AuthUnavailable
+    if a real user's role can't be looked up."""
     if caller["kind"] == "minted":
-        return {"kind": "minted", "sub": caller["sub"], "role": None}
+        return {"kind": "minted", "sub": caller["sub"], "role": None, "guest": False}
+    if caller.get("is_anonymous"):
+        return {"kind": "supabase", "id": caller["id"], "email": None, "role": None, "guest": True}
     return {"kind": "supabase", "id": caller["id"], "email": caller["email"],
-            "role": supabase_auth.fetch_role(caller["token"])}
+            "role": supabase_auth.fetch_role(caller["token"]), "guest": False}
 
 
 class BadRequest(Exception):
@@ -475,6 +526,11 @@ class Handler(BaseHTTPRequestHandler):
             hit = static_files.resolve(path)     # "/" -> dist/index.html when built
             if hit:
                 return self._send_bytes(200, *hit)
+                # A page route (/login, /app/history/42): no file extension, so hand it to
+                # React Router. A missing file like /assets/old.js still gets a real 404 --
+                # sending HTML for a script would only cause a confusing browser error.
+            if static_files.built() and "." not in path.rsplit("/", 1)[-1]:
+                return self._send_bytes(200, *static_files.resolve("/index.html"))
             return self._send(404, {"error": "not found"})
         except Exception as e:
             traceback.print_exc()
@@ -489,25 +545,36 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": "invalid JSON body"})
         try:
             if path == "/solve":
-                if not _rate_limited(self):
-                    return
                 if not _authenticate(self):
                     return
-                return self._send(200, api_solve(body))
+                if not _rate_limited(self):
+                    return
+                ok, remaining = _guest_gate(self)
+                if not ok:
+                    return
+                return self._send(200, _with_guest(api_solve(body), remaining))
             if path == "/parse":
+                if not _authenticate(self):
+                    return
                 if not _rate_limited(self):
                     return
-                if not _authenticate(self):
+                ok, remaining = _guest_gate(self)
+                if not ok:
                     return
-                return self._send(200, api_parse(body))
+                return self._send(200, _with_guest(api_parse(body), remaining))
             if path == "/grade":
-                # Only a /grade that has to parse spends model quota, so only that one
-                # goes through the limiter. Auth applies either way.
-                if body.get("parsed") is None and not _rate_limited(self):
-                    return
+                # Only a /grade that has to parse spends model quota, so only that one goes
+                # through the limiter and counts for a guest. Auth applies either way.
                 if not _authenticate(self):
                     return
-                return self._send(200, api_grade(body))
+                remaining = None
+                if body.get("parsed") is None:
+                    if not _rate_limited(self):
+                        return
+                    ok, remaining = _guest_gate(self)
+                    if not ok:
+                        return
+                return self._send(200, _with_guest(api_grade(body), remaining))
             return self._send(404, {"error": "not found"})
         except BadRequest as e:
             return self._send(400, {"error": str(e)})

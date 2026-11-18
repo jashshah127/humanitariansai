@@ -18,6 +18,11 @@
     color var(--duration-fast);
 }
 
+/* ButtonLink renders an <a>: no link underline, and keep the button's text colour. */
+a.button {
+  text-decoration: none;
+}
+
 .button[data-size="md"] {
   min-height: 44px; /* comfortable touch target */
   padding: var(--space-3) var(--space-6);

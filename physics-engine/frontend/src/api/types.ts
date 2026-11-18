@@ -47,6 +47,8 @@ export interface SolveResponse {
   card_id?: string | null;
   /** The card's inputs as solved (number, or symbol name). Same rule as card_id. */
   knowns?: Record<string, AnswerValue> | null;
+  /** Only for guests: problems left after this one (server.py's _with_guest). */
+  guest_remaining?: number;
 }
 
 // ---------------------------------------------------------------- grade mode
@@ -90,6 +92,8 @@ export interface ParseResponse {
   unknowns: QuantitySpec[];
   given: GivenValue[];
   parsed: ParsedProblem | null;
+  /** Only for guests: problems left after this one (server.py's _with_guest). */
+  guest_remaining?: number;
 }
 
 export interface GradeRequest {
@@ -116,6 +120,8 @@ export interface GradeResponse {
   per_quantity?: Record<string, QuantityGrade>;
   reference_answer?: AnswerMap | null;
   reference_formula?: string | null;
+  /** LaTeX of the formula for a wrong value. Render with MathFormula, never as text. */
+  relationship_latex?: string | null;
   /** Machine name of the matched mistake; the readable version is in `feedback`. */
   misconception?: string | null;
   missing?: string[];

@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import type { Session } from "@supabase/supabase-js";
+import type { Role, RoleStatus } from "./useRole.ts";
 
 export interface AuthValue {
   session: Session | null;
@@ -9,14 +10,20 @@ export interface AuthValue {
   loading: boolean;
   /** False when the build has no Supabase settings. */
   configured: boolean;
+  /** Signed in as a guest (Supabase anonymous sign-in): no email, a few free problems. */
+  isGuest: boolean;
   /** This page load came from a password-reset email link. */
   recoveryLink: boolean;
   /** An email link was refused (expired or already used). */
   linkError: string | null;
+  /** From GET /me. null while signed out, still loading, or if the check failed. */
+  role: Role | null;
+  roleStatus: RoleStatus;
   signIn(email: string, password: string): Promise<void>;
   /** needsConfirmation: the account exists but the email link must be clicked first. */
   signUp(email: string, password: string): Promise<{ needsConfirmation: boolean }>;
   signOut(): Promise<void>;
+  signInAsGuest(): Promise<void>;
   requestReset(email: string): Promise<void>;
   updatePassword(password: string): Promise<void>;
 }
@@ -29,11 +36,15 @@ export const signedOut: AuthValue = {
   token: "",
   loading: false,
   configured: false,
+  isGuest: false,
   recoveryLink: false,
   linkError: null,
+  role: null,
+  roleStatus: "idle",
   signIn: notSetUp,
   signUp: notSetUp,
   signOut: () => Promise.resolve(),
+  signInAsGuest: notSetUp,
   requestReset: notSetUp,
   updatePassword: notSetUp,
 };
@@ -42,4 +53,9 @@ export const AuthContext = createContext<AuthValue>(signedOut);
 
 export function useAuth(): AuthValue {
   return useContext(AuthContext);
+}
+
+/** For showing or hiding admin features only. The database enforces the real check. */
+export function useIsAdmin(): boolean {
+  return useContext(AuthContext).role === "admin";
 }

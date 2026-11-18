@@ -24,6 +24,13 @@ export interface ResultPanelProps {
 export function ResultPanel({ data, busy = false }: ResultPanelProps) {
   const state = normalizeVerification(data.verification);
   const answer = data.answer && Object.keys(data.answer).length > 0 ? data.answer : null;
+  const candidates = data.candidates ?? [];
+  const hints = data.hints ?? [];
+  const hasCandidates = candidates.length > 0;
+  const hasHints = hints.length > 0;
+  const outOfScope = data.needs_llm_completion && state === "unverified";
+  // Only the badge would show. Say so instead of leaving an empty card.
+  const nothingBack = !answer && !hasCandidates && !hasHints && !outOfScope;
 
   return (
     <Card>
@@ -32,23 +39,26 @@ export function ResultPanel({ data, busy = false }: ResultPanelProps) {
 
         {/* needs_review also sets needs_llm_completion, but the candidate list
             explains that case better than a generic notice would. */}
-        {data.needs_llm_completion && state === "unverified" && (
+        {outOfScope && (
           <p className={styles.notice}>
             This problem is outside what the engine can check. Any answer you get for it elsewhere
             is still unverified.
           </p>
         )}
-
+        {nothingBack && (
+          <p className={styles.empty}>
+            No answer came back for this problem. Try writing it out in full, with every number and
+            its unit, or start from one of the examples above.
+          </p>
+        )}
         {answer && <AnswerList answer={answer} latex={data.general_answer_latex} />}
 
         {/* Draws nothing unless the answer is verified and a diagram exists for its card. */}
         {answer && <Visualization data={data} />}
 
-        {data.candidates && data.candidates.length > 0 && (
-          <CandidateList candidates={data.candidates} />
-        )}
+        {hasCandidates && <CandidateList candidates={candidates} />}
 
-        {data.hints && data.hints.length > 0 && <HintLadder hints={data.hints} />}
+        {hasHints && <HintLadder hints={hints} />}
 
         <WhyPanel
           formula_used={data.formula_used}

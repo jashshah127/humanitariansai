@@ -65,6 +65,7 @@ class GradeResult:
     per_quantity: dict = field(default_factory=dict)
     reference_answer: Optional[dict] = None
     reference_formula: Optional[str] = None
+    relationship_latex: Optional[str] = None   # LaTeX of the formula for a wrong value; the UI renders it
     divergence: Optional[dict] = None
     misconception: Optional[str] = None
     feedback: str = ""
@@ -205,7 +206,7 @@ def grade(problem_id, raw_problem, knowns, unknowns, student_answer,
     # student who answered the one question asked gets told they left two out.
     asked = [u for u in unknowns if u in solution["final_answer"]] or list(solution["final_answer"])
     reference = {k: solution["final_answer"][k] for k in asked}
-    symbolic = solution["solve"].get("symbolic_answer") or {}
+    symbolic_latex = solution["solve"].get("symbolic_answer_latex") or {}
 
     # If the reference came back as a formula rather than a number, the problem was
     # stated symbolically and there is nothing numeric to grade against. Comparing a
@@ -288,7 +289,7 @@ def grade(problem_id, raw_problem, knowns, unknowns, student_answer,
                               "submitted": step_val,
                               "reference": reference[step_name]}
                 break
-
+    relationship_latex = None
     if misconception:
         feedback = (f"Not correct. The value submitted for {name} matches what you get "
                     f"from a specific error: {explanation}. "
@@ -298,9 +299,9 @@ def grade(problem_id, raw_problem, knowns, unknowns, student_answer,
         # No numbers in this text: the correct value is in reference_answer, and the UI
         # decides when to show it. Putting it here would show it on the first wrong try.
         # (It also removes the old `{ref_val:.4g}` format, which crashed on sympy values.)
-        general = symbolic.get(name)
+        # The formula goes in its own field as LaTeX, so the UI can render it as math.
+        relationship_latex = symbolic_latex.get(name)
         feedback = (f"Not correct. Your value for {name} doesn't match the verified answer."
-                    + (f" The relationship is {name} = {general}." if general else "")
                     + f" Worth checking: {card.pitfalls}")
         assessment = Assessment.WRONG_VALUE
 
@@ -314,6 +315,7 @@ def grade(problem_id, raw_problem, knowns, unknowns, student_answer,
         reference_formula=card.name,
         divergence=divergence,
         misconception=misconception,
+        relationship_latex=relationship_latex,
         feedback=feedback,
         confidence="high",
         missing=missing,

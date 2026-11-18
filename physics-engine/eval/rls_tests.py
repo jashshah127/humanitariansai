@@ -20,6 +20,7 @@ Standard library only. Needs: the local stack running, Docker (to bootstrap the 
 and clean up, as an operator would), and npx (to read the local URL and keys).
 """
 import json
+import shutil
 import subprocess
 import sys
 import urllib.error
@@ -32,7 +33,7 @@ EMAIL = "rlstest-{}-" + RUN + "@test.dev"
 PASSWORD = "local-only-Passw0rd!"
 TEXT_TAG = f"[rls-test {RUN}]"
 DB_CONTAINER = "supabase_db_local-dev"
-CLI = ["npx", "--yes", "supabase@2.121.0"]
+CLI = [shutil.which("npx") or "npx", "supabase@2.121.0"]
 
 failures = []
 
@@ -107,6 +108,28 @@ def role_of(user_id):
 SERVER = {"key": SECRET}                     # what server.py would use to write the log
 LOG_ROW = {"problem_text": f"{TEXT_TAG} Two blocks hang from a pulley.", "verification": "verified"}
 
+GUESTS = []                 # guest ids this run created (no email, so cleaned up by id)
+GUEST_DAILY_ADDED = [0]     # problems this run added to today's all-guest total
+
+
+def field(d, key):
+    return d.get(key) if isinstance(d, dict) else d
+
+
+def reads_nothing(st, d):
+    """Refused outright, or allowed but 0 rows: either way, nothing was read."""
+    return st in (401, 403) or (st == 200 and d == [])
+
+
+def sign_in_guest():
+    """A guest, made the way the browser makes one (supabase.auth.signInAnonymously())."""
+    st, d = call("POST", "/auth/v1/signup", body={})
+    if st != 200 or "access_token" not in d:
+        sys.exit(f"Couldn't create a guest: {st} {d}\n"
+                 "Is enable_anonymous_sign_ins = true in supabase/config.toml? "
+                 "Restart the stack after changing it.")
+    GUESTS.append(d["user"]["id"])
+    return d["access_token"], d["user"]["id"]
 
 # ---------------------------------------------------------------- tests
 
@@ -165,7 +188,7 @@ def problems_log_tests(alice, admin):
     st, d = call("POST", "/rest/v1/problems_log", alice[0], LOG_ROW)
     check("normal user cannot write the log (42501)", (st, code(d)), (403, "42501"))
     st, d = call("GET", f"/rest/v1/problems_log?select=id&{tagged}")
-    check("no login: reads 0 rows of the log", (st, len(d)), (200, 0))
+    check("no login: refused (401) since the admin-edits migration", st, 401)
     st, d = call("GET", f"/rest/v1/problems_log?select=id&{tagged}", admin[0])
     check("admin reads this run's 2 rows", (st, len(d)), (200, 2))
     st, d = call("POST", "/rest/v1/problems_log", admin[0], LOG_ROW)
@@ -253,6 +276,72 @@ def role_tests(alice, bob, admin):
         if saved:  # give back admin to anyone who had it before the test
             sql(f"update public.profiles set role = 'admin' where id in ('{saved.replace(',', chr(39) + ',' + chr(39))}')")
 
+def guest_tests(alice):
+    print("\nguest limits (use_guest_problem)")
+    (g_tok, g_id), (g2_tok, g2_id) = sign_in_guest(), sign_in_guest()
+
+    st, d = call("GET", "/auth/v1/user", g_tok)
+    check("a guest's session says is_anonymous (server.py relies on it)",
+          (st, field(d, "is_anonymous")), (200, True))
+
+    def use(user_id, per_guest=3, daily=1_000_000, **who):
+        st, d = call("POST", "/rest/v1/rpc/use_guest_problem",
+                     body={"p_user": user_id, "p_per_guest": per_guest, "p_daily": daily}, **who)
+        if st == 200 and field(d, "status") == "ok":
+            GUEST_DAILY_ADDED[0] += 1
+        return st, d
+
+    # Per-guest limit, through the server's key.
+    got = []
+    for _ in range(4):
+        st, d = use(g_id, **SERVER)
+        got.append((st, field(d, "status"), field(d, "remaining")))
+    check("server: a guest gets 3 problems, then guest_limit", got,
+          [(200, "ok", 2), (200, "ok", 1), (200, "ok", 0), (200, "guest_limit", 0)])
+    check("  ...the count is stored", sql(f"select used from public.guest_usage where user_id = '{g_id}'"), "3")
+
+    # Daily cap: set it to "one more than today's total", so the second call hits it.
+    today = "(now() at time zone 'utc')::date"
+    total = int(sql(f"select coalesce((select used from public.guest_daily_usage where day = {today}), 0)") or 0)
+    first, second = use(g2_id, daily=total + 1, **SERVER), use(g2_id, daily=total + 1, **SERVER)
+    check("server: the daily cap stops a guest who still has problems left",
+          (field(first[1], "status"), field(second[1], "status"), field(second[1], "remaining")),
+          ("ok", "daily_limit", 2))
+
+    # A real account is never charged.
+    st, d = use(alice[1], **SERVER)
+    check("server: a real (non-guest) user is never counted", (st, field(d, "status")), (200, "not_guest"))
+    check("  ...no usage row was made for them",
+          sql(f"select count(*) from public.guest_usage where user_id = '{alice[1]}'"), "0")
+
+    # Browsers can't run the function.
+    before = sql(f"select used from public.guest_usage where user_id = '{g2_id}'")
+    st, d = use(g2_id, token=g2_tok)
+    check("a guest cannot call use_guest_problem from the browser (42501)",
+          (st in (401, 403), code(d)), (True, "42501"))
+    st, d = use(g2_id)
+    check("no login cannot call use_guest_problem (42501)", (st in (401, 403), code(d)), (True, "42501"))
+    check("  ...those calls counted nothing",
+          sql(f"select used from public.guest_usage where user_id = '{g2_id}'"), before)
+
+    # Browsers can't read or change the counters.
+    for table in ("guest_usage", "guest_daily_usage"):
+        st, d = call("GET", f"/rest/v1/{table}?select=*", g_tok)
+        check(f"a guest reads nothing from {table}", reads_nothing(st, d), True)
+        st, d = call("GET", f"/rest/v1/{table}?select=*")
+        check(f"no login reads nothing from {table}", reads_nothing(st, d), True)
+    st, d = call("POST", "/rest/v1/guest_usage", g2_tok, {"user_id": g2_id, "used": 0})
+    check("a guest cannot add usage rows (42501)", (st in (401, 403), code(d)), (True, "42501"))
+    st, d = call("PATCH", f"/rest/v1/guest_usage?user_id=eq.{g_id}", g_tok, {"used": 0},
+                 prefer="return=representation")
+    check("a guest resetting their own count changes nothing",
+          (st, d) == (200, []) or (st in (401, 403) and code(d) == "42501"), True)
+    check("  ...the count is still 3", sql(f"select used from public.guest_usage where user_id = '{g_id}'"), "3")
+
+    # Cleanup of old guest relies on this.
+    sql(f"delete from auth.users where id = '{g_id}'")
+    check("deleting a guest deletes their usage row",
+          sql(f"select count(*) from public.guest_usage where user_id = '{g_id}'"), "0")
 
 # ---------------------------------------------------------------- main
 
@@ -266,7 +355,14 @@ if __name__ == "__main__":
         problems_log_tests(alice, admin)
         tagging_tests()
         role_tests(alice, bob, admin)
+        guest_tests(alice)
     finally:
+        if GUESTS:
+            ids = ",".join(f"'{g}'" for g in GUESTS)
+            sql(f"delete from auth.users where id in ({ids})")           # cascades to guest_usage
+        if GUEST_DAILY_ADDED[0]:
+            sql(f"update public.guest_daily_usage set used = greatest(used - {GUEST_DAILY_ADDED[0]}, 0) "
+                "where day = (now() at time zone 'utc')::date")          # give back today's total
         sql(f"delete from public.problems_log where problem_text like '{TEXT_TAG}%'")
         sql(f"delete from auth.users where email like 'rlstest-%-{RUN}@test.dev'")    # cascades to profiles
         print("\ncleaned up this run's users and rows")

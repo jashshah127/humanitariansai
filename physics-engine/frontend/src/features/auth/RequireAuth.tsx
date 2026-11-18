@@ -11,10 +11,16 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   if (!configured) {
     return (
       <main className={styles.page}>
-        <h1 className={styles.title}>Sign-in isn’t set up</h1>
+        <h1 className={styles.title}>Sign-in is unavailable</h1>
         <p className={styles.lead}>
-          This build has no VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY.
+          This site can’t sign anyone in right now. This is a problem with the site, not with your
+          account.
         </p>
+        {import.meta.env.DEV && (
+          <p className={styles.devNote}>
+            Dev: set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env, then restart Vite.
+          </p>
+        )}
       </main>
     );
   }

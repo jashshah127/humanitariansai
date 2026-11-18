@@ -4,7 +4,6 @@ import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router";
 import { router } from "./router.tsx";
 import "./design/tokens.css";
-import "./legacy/styles.css";
 import { AuthProvider } from "./features/auth/AuthProvider.tsx";
 
 const root = document.getElementById("root");
