@@ -19,6 +19,7 @@ import { MAX_CHARS, MODES, parseMode } from "./mode.ts";
 import type { WorkspaceMode } from "./mode.ts";
 import { ModeToggle } from "./ModeToggle.tsx";
 import { ProblemInput } from "./ProblemInput.tsx";
+import { ProblemLogLink } from "../problem-log/ProblemLogLink.tsx";
 import styles from "./workspace.module.css";
 
 /** After this long, tell the student the wait is normal (cold start, provider retries). */
@@ -176,6 +177,7 @@ export default function WorkspacePage() {
     <main className={styles.page}>
       <header className={styles.header}>
         <div className={styles.account}>
+         <ProblemLogLink />
           {session?.user.email && <span className={styles.accountEmail}>{session.user.email}</span>}
           <Button variant="ghost" size="sm" onClick={() => void signOut()}>
             Sign out
