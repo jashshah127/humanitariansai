@@ -31,7 +31,7 @@ export default function WorkspacePage() {
   const [params, setParams] = useSearchParams();
   const mode = parseMode(params.get("mode"));
 
-    const location = useLocation();
+  const location = useLocation();
   // Filled in when a past problem is reopened from /app/history/:id.
   const [query, setQuery] = useState(() => {
     const problem = (location.state as Partial<ReopenState> | null)?.problem;

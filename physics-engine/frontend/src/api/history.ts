@@ -25,7 +25,10 @@ export interface HistoryEntry {
 }
 
 /** What the app sends when saving. user_id and created_at are filled in by the database. */
-export type NewHistoryEntry = Pick<HistoryEntry, "problem_text" | "mode" | "verification" | "answer">;
+export type NewHistoryEntry = Pick<
+  HistoryEntry,
+  "problem_text" | "mode" | "verification" | "answer"
+>;
 
 export interface HistoryStore {
   /** The signed-in user's own entries, newest first. */

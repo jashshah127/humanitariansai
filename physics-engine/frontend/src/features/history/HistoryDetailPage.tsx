@@ -133,10 +133,20 @@ export default function HistoryDetailPage({ store = historyStore }: { store?: Hi
             ) : (
               <span className={styles.confirm}>
                 Delete this problem for good?
-                <Button variant="secondary" size="sm" loading={deleting} onClick={() => void remove(load.row)}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={deleting}
+                  onClick={() => void remove(load.row)}
+                >
                   Yes, delete
                 </Button>
-                <Button variant="ghost" size="sm" disabled={deleting} onClick={() => setConfirming(false)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={deleting}
+                  onClick={() => setConfirming(false)}
+                >
                   Cancel
                 </Button>
               </span>

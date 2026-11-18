@@ -52,7 +52,9 @@ export default function HistoryPage({ store = historyStore }: { store?: HistoryS
           ← Back to the workspace
         </Link>
         <h1 className={styles.title}>Your problems</h1>
-        <p className={styles.lead}>Problems you’ve worked on, newest first. Only you can see them.</p>
+        <p className={styles.lead}>
+          Problems you’ve worked on, newest first. Only you can see them.
+        </p>
       </header>
 
       {load.status === "loading" && <p className={styles.status}>Loading your history…</p>}
@@ -68,7 +70,8 @@ export default function HistoryPage({ store = historyStore }: { store?: HistoryS
 
       {load.status === "ready" && rows.length === 0 && (
         <p className={styles.status}>
-          No problems yet. Problems you solve will show up here. <Link to="/app">Solve one now</Link>.
+          No problems yet. Problems you solve will show up here.{" "}
+          <Link to="/app">Solve one now</Link>.
         </p>
       )}
 
