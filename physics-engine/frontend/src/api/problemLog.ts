@@ -82,10 +82,9 @@ export interface ProblemLogStore {
   updateTags(id: string, tags: TagEdit): Promise<LogEntry>;
 }
 
-const COLUMNS =
-  "id, problem_text, redactions, topic, subtopic, grade_level, difficulty, verification, " +
-  "tag_model, tag_source, needs_review, review_reason, matched_card, tags_edited_by, " +
-  "tags_edited_at, created_at";
+// One literal string, not joined with +: supabase-js reads this text at the type level,
+// and a joined string is just `string` to TypeScript, which breaks the row types.
+const COLUMNS = "id, problem_text, redactions, topic, subtopic, grade_level, difficulty, verification, tag_model, tag_source, needs_review, review_reason, matched_card, tags_edited_by, tags_edited_at, created_at";
 /** Filters run in the browser over the newest rows. Paginate when the log outgrows this. */
 const LIMIT = 500;
 

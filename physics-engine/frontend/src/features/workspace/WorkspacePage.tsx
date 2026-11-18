@@ -3,11 +3,8 @@ import { ApiError, isAbort } from "../../api/client.ts";
 import { useAuth } from "../auth/AuthContext.ts";
 import { grade, parseForGrading } from "../../api/grade.ts";
 import { solve } from "../../api/solve.ts";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
-import type { GradeResponse, ParseResponse, RenderMode, SolveResponse } from "../../api/types.ts";
-import { historyStore } from "../../api/history.ts";
-import { normalizeVerification } from "../../design/components/verification.ts";
-import type { ReopenState } from "../history/HistoryDetailPage.tsx";
+import { useNavigate, useSearchParams } from "react-router";
+import type { GradeResponse, ParseResponse, SolveResponse } from "../../api/types.ts";
 import { Button } from "../../design/components/Button.tsx";
 import { isWrong, normalizeAssessment } from "../grade/answer.ts";
 import { GradeSection } from "../grade/GradeSection.tsx";
@@ -31,12 +28,7 @@ export default function WorkspacePage() {
   const [params, setParams] = useSearchParams();
   const mode = parseMode(params.get("mode"));
 
-  const location = useLocation();
-  // Filled in when a past problem is reopened from /app/history/:id.
-  const [query, setQuery] = useState(() => {
-    const problem = (location.state as Partial<ReopenState> | null)?.problem;
-    return typeof problem === "string" ? problem : "";
-  });
+  const [query, setQuery] = useState("");
   const { token, session, signOut } = useAuth();
   const navigate = useNavigate();
   const [result, setResult] = useState<SolveResponse | null>(null);
@@ -154,23 +146,9 @@ export default function WorkspacePage() {
         const data = await solve({ query: trimmed, render, token, signal });
         setResult(data);
         setResultId((n) => n + 1);
-        saveToHistory(trimmed, render, data);
       },
       () => setResult(null),
     );
-  }
-
-  /** Best effort: a failed save is logged, never shown, and never touches the answer. */
-  function saveToHistory(text: string, render: RenderMode, data: SolveResponse) {
-    if (data.route === "error") return; // the engine failed; nothing worth looking back at
-    historyStore
-      .save({
-        problem_text: text,
-        mode: render,
-        verification: normalizeVerification(data.verification),
-        answer: render === "solve" ? (data.answer ?? null) : null,
-      })
-      .catch((e: unknown) => console.error("[history] save failed", e));
   }
 
   function setUpGrading(text: string) {
@@ -198,7 +176,6 @@ export default function WorkspacePage() {
     <main className={styles.page}>
       <header className={styles.header}>
         <div className={styles.account}>
-          <Link to="/app/history">History</Link>
           {session?.user.email && <span className={styles.accountEmail}>{session.user.email}</span>}
           <Button variant="ghost" size="sm" onClick={() => void signOut()}>
             Sign out

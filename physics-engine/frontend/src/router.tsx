@@ -9,8 +9,6 @@ import ResetPasswordPage from "./features/auth/ResetPasswordPage.tsx";
 import { RequireAuth } from "./features/auth/RequireAuth.tsx";
 import ProblemLogPage from "./features/problem-log/ProblemLogPage.tsx";
 import ProblemLogDetailPage from "./features/problem-log/ProblemLogDetailPage.tsx";
-import HistoryPage from "./features/history/HistoryPage.tsx";
-import HistoryDetailPage from "./features/history/HistoryDetailPage.tsx";
 
 // // "/" sends everyone to the workspace at /app (the old app is retired).
 // doesn't change while /app is being tested.
