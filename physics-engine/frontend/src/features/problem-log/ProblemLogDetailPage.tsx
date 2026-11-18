@@ -26,7 +26,11 @@ import { formatExact, formatHour, TAG_SOURCE_LABELS } from "./display.ts";
 import styles from "./problemLog.module.css";
 
 /** /app/history/:id: one logged problem, with the tag-fixing form. */
-export default function ProblemLogDetailPage({ store = problemLogStore }: { store?: ProblemLogStore }) {
+export default function ProblemLogDetailPage({
+  store = problemLogStore,
+}: {
+  store?: ProblemLogStore;
+}) {
   return (
     <AdminOnly store={store}>
       <Detail store={store} />
@@ -129,7 +133,9 @@ function Detail({ store }: { store: ProblemLogStore }) {
             <div>
               <dt>Tags from</dt>
               <dd>
-                {load.row.tag_source ? TAG_SOURCE_LABELS[load.row.tag_source] ?? load.row.tag_source : "Not tagged yet"}
+                {load.row.tag_source
+                  ? (TAG_SOURCE_LABELS[load.row.tag_source] ?? load.row.tag_source)
+                  : "Not tagged yet"}
                 {load.row.tag_model ? ` (${load.row.tag_model})` : ""}
               </dd>
             </div>
@@ -224,7 +230,9 @@ function TagForm({
       onSaved(updated);
     } catch (err) {
       if (!(err instanceof TagEditError)) console.error("[problem log] save failed", err);
-      setError(err instanceof TagEditError ? err.message : "The tags couldn’t be saved. Try again.");
+      setError(
+        err instanceof TagEditError ? err.message : "The tags couldn’t be saved. Try again.",
+      );
       setSaving(false);
     }
   }

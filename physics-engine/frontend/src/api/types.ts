@@ -47,7 +47,7 @@ export interface SolveResponse {
   card_id?: string | null;
   /** The card's inputs as solved (number, or symbol name). Same rule as card_id. */
   knowns?: Record<string, AnswerValue> | null;
-    /** Only for guests: problems left after this one (server.py's _with_guest). */
+  /** Only for guests: problems left after this one (server.py's _with_guest). */
   guest_remaining?: number;
 }
 
@@ -92,7 +92,7 @@ export interface ParseResponse {
   unknowns: QuantitySpec[];
   given: GivenValue[];
   parsed: ParsedProblem | null;
-    /** Only for guests: problems left after this one (server.py's _with_guest). */
+  /** Only for guests: problems left after this one (server.py's _with_guest). */
   guest_remaining?: number;
 }
 

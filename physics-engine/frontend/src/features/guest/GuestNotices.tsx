@@ -25,9 +25,7 @@ export function GuestBanner({
         : `${remaining} guest ${remaining === 1 ? "problem" : "problems"} left.`;
   return (
     <div className={styles.banner} role="status">
-      <p className={styles.text}>
-        {text} Create an account to keep solving.
-      </p>
+      <p className={styles.text}>{text} Create an account to keep solving.</p>
       <Button variant="secondary" size="sm" onClick={() => onLeave("/signup")}>
         Create an account
       </Button>
@@ -36,7 +34,13 @@ export function GuestBanner({
 }
 
 /** Replaces the error box when the server refuses a guest (403 guest_limit / daily_limit). */
-export function GuestLimit({ message, onLeave }: { message: string; onLeave: (to: LeaveTo) => void }) {
+export function GuestLimit({
+  message,
+  onLeave,
+}: {
+  message: string;
+  onLeave: (to: LeaveTo) => void;
+}) {
   return (
     <div className={styles.limit} role="alert">
       <p className={styles.text}>{message}</p>

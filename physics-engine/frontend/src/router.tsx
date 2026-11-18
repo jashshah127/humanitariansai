@@ -29,22 +29,22 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
       },
-        {
-    path: "/app/history",
-    element: (
-      <RequireAuth>
-        <ProblemLogPage />
-      </RequireAuth>
-    ),
-  },
-  {
-    path: "/app/history/:id",
-    element: (
-      <RequireAuth>
-        <ProblemLogDetailPage />
-      </RequireAuth>
-    ),
-  },
+      {
+        path: "/app/history",
+        element: (
+          <RequireAuth>
+            <ProblemLogPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "/app/history/:id",
+        element: (
+          <RequireAuth>
+            <ProblemLogDetailPage />
+          </RequireAuth>
+        ),
+      },
       { path: "/login", element: <LoginPage /> },
       { path: "/signup", element: <SignupPage /> },
       { path: "/reset-password", element: <ResetPasswordPage /> },

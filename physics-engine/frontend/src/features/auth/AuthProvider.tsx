@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await client.auth.signOut();
         setSession(null); // even if the network call failed, this tab is signed out
       },
-        async signInAsGuest() {
+      async signInAsGuest() {
         await check(client.auth.signInAnonymously());
       },
       async requestReset(email) {

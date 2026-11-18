@@ -32,11 +32,11 @@ export default function WorkspacePage() {
   const mode = parseMode(params.get("mode"));
 
   const [query, setQuery] = useState("");
-    const { token, session, signOut, isGuest } = useAuth();
+  const { token, session, signOut, isGuest } = useAuth();
   const navigate = useNavigate();
   const [result, setResult] = useState<SolveResponse | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
-    // Guests only: what the server said is left after the last problem. null until then.
+  // Guests only: what the server said is left after the last problem. null until then.
   const [guestRemaining, setGuestRemaining] = useState<number | null>(null);
   const guestOut = isGuest && (guestRemaining === 0 || error?.kind === "guest");
   const [loading, setLoading] = useState(false);
@@ -75,7 +75,11 @@ export default function WorkspacePage() {
   // In grade mode the button sets up answer boxes; once they exist for this exact text,
   // pressing it again would only spend another model call.
   const canSubmit =
-    !!trimmed && trimmed.length <= MAX_CHARS && !loading && !(mode === "grade" && setupCurrent) && !guestOut;
+    !!trimmed &&
+    trimmed.length <= MAX_CHARS &&
+    !loading &&
+    !(mode === "grade" && setupCurrent) &&
+    !guestOut;
   const submitLabel = MODES.find((m) => m.value === mode)?.submit ?? "Solve";
   // Only when nothing is on screen yet. With an older result showing, that result
   // stays (dimmed) instead, so the page doesn't jump.
@@ -190,7 +194,7 @@ export default function WorkspacePage() {
     <main className={styles.page}>
       <header className={styles.header}>
         <div className={styles.account}>
-         <ProblemLogLink />
+          <ProblemLogLink />
           {session?.user.email && <span className={styles.accountEmail}>{session.user.email}</span>}
           {isGuest && <span className={styles.accountEmail}>Guest</span>}
           <Button variant="ghost" size="sm" onClick={() => void signOut()}>
@@ -203,7 +207,10 @@ export default function WorkspacePage() {
         </p>
       </header>
       {isGuest && (
-        <GuestBanner remaining={error?.kind === "guest" ? 0 : guestRemaining} onLeave={(to) => void leaveGuest(to)} />
+        <GuestBanner
+          remaining={error?.kind === "guest" ? 0 : guestRemaining}
+          onLeave={(to) => void leaveGuest(to)}
+        />
       )}
       <form
         className={styles.form}

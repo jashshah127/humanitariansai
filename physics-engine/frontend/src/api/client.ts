@@ -108,11 +108,16 @@ async function request<T>(
     if (res.status === 403) {
       // A guest has used their problems (server.py's _guest_gate). Its message is written
       // for the student, so it is shown as is.
-      const body = (await res.json().catch(() => null)) as { error?: unknown; guest_limit?: unknown } | null;
+      const body = (await res.json().catch(() => null)) as {
+        error?: unknown;
+        guest_limit?: unknown;
+      } | null;
       if (body && typeof body.guest_limit === "string") {
         throw new ApiError(
           "guest",
-          typeof body.error === "string" ? body.error : "You’ve used all your guest problems. Create an account to keep solving.",
+          typeof body.error === "string"
+            ? body.error
+            : "You’ve used all your guest problems. Create an account to keep solving.",
         );
       }
     }

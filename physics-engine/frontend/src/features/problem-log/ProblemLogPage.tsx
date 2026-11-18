@@ -59,8 +59,8 @@ function LogList({ store }: { store: ProblemLogStore }) {
         </Link>
         <h1 className={styles.title}>Problem logs</h1>
         <p className={styles.lead}>
-          Every problem asked, with its tags. Personal details are removed and no row says who
-          asked it.
+          Every problem asked, with its tags. Personal details are removed and no row says who asked
+          it.
         </p>
       </header>
 
@@ -117,7 +117,11 @@ function LogList({ store }: { store: ProblemLogStore }) {
               <option value="needs_review">Needs review</option>
               <option value="reviewed">Doesn’t need review</option>
             </Select>
-            <Select label="Topic" value={filters.topic} onChange={(e) => set({ topic: e.target.value })}>
+            <Select
+              label="Topic"
+              value={filters.topic}
+              onChange={(e) => set({ topic: e.target.value })}
+            >
               <option value={ALL}>All</option>
               {topics.map((t) => (
                 <option key={t} value={t}>

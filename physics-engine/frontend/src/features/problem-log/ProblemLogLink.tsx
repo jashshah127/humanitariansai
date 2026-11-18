@@ -10,14 +10,14 @@ import { useAuth } from "../auth/AuthContext.ts";
  * the page itself still refuses non-admins, so hiding is never the protection.
  */
 export function ProblemLogLink({ store = problemLogStore }: { store?: ProblemLogStore }) {
-    const { session, isGuest } = useAuth();
+  const { session, isGuest } = useAuth();
   const userId = session?.user.id ?? null;
   // The answer is kept with the user it was for, so after switching accounts the old
   // answer is never shown while the new one is being checked.
   const [checked, setChecked] = useState<{ user: string | null; admin: boolean } | null>(null);
 
   useEffect(() => {
-          if (isGuest) return; // guests are never admins: don't even ask
+    if (isGuest) return; // guests are never admins: don't even ask
     let live = true;
     store.isAdmin().then(
       (admin) => {

@@ -84,7 +84,8 @@ export interface ProblemLogStore {
 
 // One literal string, not joined with +: supabase-js reads this text at the type level,
 // and a joined string is just `string` to TypeScript, which breaks the row types.
-const COLUMNS = "id, problem_text, redactions, topic, subtopic, grade_level, difficulty, verification, tag_model, tag_source, needs_review, review_reason, matched_card, tags_edited_by, tags_edited_at, created_at";
+const COLUMNS =
+  "id, problem_text, redactions, topic, subtopic, grade_level, difficulty, verification, tag_model, tag_source, needs_review, review_reason, matched_card, tags_edited_by, tags_edited_at, created_at";
 /** Filters run in the browser over the newest rows. Paginate when the log outgrows this. */
 const LIMIT = 500;
 
@@ -141,7 +142,10 @@ export function supabaseProblemLog(client: SupabaseClient): ProblemLogStore {
       const { data, error } = await table().update(tags).eq("id", id).select(COLUMNS).maybeSingle();
       if (error) throw toError(error);
       // A non-admin's update matches no rows: no error, just nothing back.
-      if (!data) throw new TagEditError("This problem couldn’t be changed. Check that you’re still an admin.");
+      if (!data)
+        throw new TagEditError(
+          "This problem couldn’t be changed. Check that you’re still an admin.",
+        );
       return data as LogEntry;
     },
   };
@@ -149,14 +153,27 @@ export function supabaseProblemLog(client: SupabaseClient): ProblemLogStore {
 
 // ---------------------------------------------------------------- sample data
 
-const SAMPLE_TOPICS: TopicPair[] = ([
-  ["Mechanics", "Kinematics"], ["Mechanics", "Dynamics"], ["Mechanics", "Work & Energy"],
-  ["Mechanics", "Momentum"], ["Mechanics", "Rotation"], ["Mechanics", "Gravitation"],
-  ["Mechanics", "Vibrations and Waves"], ["E&M", "Electrostatics"], ["E&M", "Circuits"],
-  ["E&M", "Magnetism"], ["E&M", "Induction"], ["Thermodynamics", "Gas Laws"],
-  ["Thermodynamics", "Calorimetry"], ["Thermodynamics", "Heat Engines"],
-  ["Thermodynamics", "Entropy"], ["Thermodynamics", "Laws"], ["Other", "Other"],
-] as [string, string][]).map(([topic, subtopic]) => ({ topic, subtopic }));
+const SAMPLE_TOPICS: TopicPair[] = (
+  [
+    ["Mechanics", "Kinematics"],
+    ["Mechanics", "Dynamics"],
+    ["Mechanics", "Work & Energy"],
+    ["Mechanics", "Momentum"],
+    ["Mechanics", "Rotation"],
+    ["Mechanics", "Gravitation"],
+    ["Mechanics", "Vibrations and Waves"],
+    ["E&M", "Electrostatics"],
+    ["E&M", "Circuits"],
+    ["E&M", "Magnetism"],
+    ["E&M", "Induction"],
+    ["Thermodynamics", "Gas Laws"],
+    ["Thermodynamics", "Calorimetry"],
+    ["Thermodynamics", "Heat Engines"],
+    ["Thermodynamics", "Entropy"],
+    ["Thermodynamics", "Laws"],
+    ["Other", "Other"],
+  ] as [string, string][]
+).map(([topic, subtopic]) => ({ topic, subtopic }));
 
 const BLANK = {
   redactions: 0,
@@ -171,44 +188,81 @@ const SAMPLE_ROWS: LogEntry[] = [
   {
     ...BLANK,
     id: "00000000-0000-4000-8000-000000000001",
-    problem_text: "Two blocks of 4 kg and 6 kg hang from a frictionless pulley. Find the acceleration and tension.",
-    topic: "Mechanics", subtopic: "Dynamics", grade_level: "intro_undergrad", difficulty: "easy",
-    verification: "verified", tag_source: "engine_card", tag_model: "gemini-3.6-flash",
-    needs_review: false, matched_card: "MECH-DYN-ATWOOD", created_at: "2026-11-15T15:00:00Z",
+    problem_text:
+      "Two blocks of 4 kg and 6 kg hang from a frictionless pulley. Find the acceleration and tension.",
+    topic: "Mechanics",
+    subtopic: "Dynamics",
+    grade_level: "intro_undergrad",
+    difficulty: "easy",
+    verification: "verified",
+    tag_source: "engine_card",
+    tag_model: "gemini-3.6-flash",
+    needs_review: false,
+    matched_card: "MECH-DYN-ATWOOD",
+    created_at: "2026-11-15T15:00:00Z",
   },
   {
     ...BLANK,
     id: "00000000-0000-4000-8000-000000000002",
     problem_text: "A pulley problem: my email is [EMAIL]. Two masses of 3 kg and 5 kg. Find a.",
     redactions: 1,
-    topic: "Mechanics", subtopic: "Dynamics", grade_level: "high_school", difficulty: "easy",
-    verification: "verified", tag_source: "engine_card", tag_model: "gemini-3.6-flash",
-    needs_review: true, review_reason: "model said E&M / Circuits", matched_card: "MECH-DYN-ATWOOD",
+    topic: "Mechanics",
+    subtopic: "Dynamics",
+    grade_level: "high_school",
+    difficulty: "easy",
+    verification: "verified",
+    tag_source: "engine_card",
+    tag_model: "gemini-3.6-flash",
+    needs_review: true,
+    review_reason: "model said E&M / Circuits",
+    matched_card: "MECH-DYN-ATWOOD",
     created_at: "2026-11-15T14:00:00Z",
   },
   {
     ...BLANK,
     id: "00000000-0000-4000-8000-000000000003",
-    problem_text: "Find the energy levels of an electron in a 1D infinite square well of width 1 nm.",
-    topic: "Other", subtopic: "Other", grade_level: "upper_undergrad", difficulty: "medium",
-    verification: "unverified", tag_source: "llm", tag_model: "gemini-3.6-flash",
-    needs_review: true, review_reason: "outside the formula library", created_at: "2026-11-14T20:00:00Z",
+    problem_text:
+      "Find the energy levels of an electron in a 1D infinite square well of width 1 nm.",
+    topic: "Other",
+    subtopic: "Other",
+    grade_level: "upper_undergrad",
+    difficulty: "medium",
+    verification: "unverified",
+    tag_source: "llm",
+    tag_model: "gemini-3.6-flash",
+    needs_review: true,
+    review_reason: "outside the formula library",
+    created_at: "2026-11-14T20:00:00Z",
   },
   {
     ...BLANK,
     id: "00000000-0000-4000-8000-000000000004",
-    problem_text: "Two point charges of 3 microcoulombs are 0.05 m apart. Find the force between them.",
-    topic: "E&M", subtopic: "Electrostatics", grade_level: "intro_undergrad", difficulty: "easy",
-    verification: "verified", tag_source: "admin", needs_review: false,
-    tags_edited_by: "sample-admin", tags_edited_at: "2026-11-14T18:42:00Z",
+    problem_text:
+      "Two point charges of 3 microcoulombs are 0.05 m apart. Find the force between them.",
+    topic: "E&M",
+    subtopic: "Electrostatics",
+    grade_level: "intro_undergrad",
+    difficulty: "easy",
+    verification: "verified",
+    tag_source: "admin",
+    needs_review: false,
+    tags_edited_by: "sample-admin",
+    tags_edited_at: "2026-11-14T18:42:00Z",
     created_at: "2026-11-14T17:00:00Z",
   },
   {
     ...BLANK,
     id: "00000000-0000-4000-8000-000000000005",
-    problem_text: "A 0.5 kg mass on a spring with damping constant 1.2 kg/s. Find the damped frequency.",
-    topic: null, subtopic: null, grade_level: null, difficulty: null,
-    verification: "unverified", tag_source: null, needs_review: false, created_at: "2026-11-13T09:00:00Z",
+    problem_text:
+      "A 0.5 kg mass on a spring with damping constant 1.2 kg/s. Find the damped frequency.",
+    topic: null,
+    subtopic: null,
+    grade_level: null,
+    difficulty: null,
+    verification: "unverified",
+    tag_source: null,
+    needs_review: false,
+    created_at: "2026-11-13T09:00:00Z",
   },
 ];
 
@@ -233,16 +287,22 @@ export function sampleProblemLog(
     updateTags: (id, tags) => {
       const old = data.find((r) => r.id === id);
       if (!admin || !old) {
-        return Promise.reject(new TagEditError("This problem couldn’t be changed. Check that you’re still an admin."));
+        return Promise.reject(
+          new TagEditError("This problem couldn’t be changed. Check that you’re still an admin."),
+        );
       }
       if (!SAMPLE_TOPICS.some((t) => t.topic === tags.topic && t.subtopic === tags.subtopic)) {
         return Promise.reject(
-          new TagEditError("Those tags aren’t an allowed combination. Pick a topic and subtopic from the lists."),
+          new TagEditError(
+            "Those tags aren’t an allowed combination. Pick a topic and subtopic from the lists.",
+          ),
         );
       }
       const tagsChanged =
-        tags.topic !== old.topic || tags.subtopic !== old.subtopic ||
-        tags.grade_level !== old.grade_level || tags.difficulty !== old.difficulty;
+        tags.topic !== old.topic ||
+        tags.subtopic !== old.subtopic ||
+        tags.grade_level !== old.grade_level ||
+        tags.difficulty !== old.difficulty;
       const next: LogEntry = {
         ...old,
         ...tags,

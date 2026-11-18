@@ -88,7 +88,10 @@ describe("ProblemLogPage", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const store = sampleProblemLog();
     const real = store.list.bind(store);
-    const list = vi.fn<ProblemLogStore["list"]>().mockRejectedValueOnce(new Error("down")).mockImplementation(real);
+    const list = vi
+      .fn<ProblemLogStore["list"]>()
+      .mockRejectedValueOnce(new Error("down"))
+      .mockImplementation(real);
     open("/app/history", { ...store, list });
     expect(await screen.findByRole("alert")).toHaveTextContent(/couldn’t be loaded/);
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
@@ -109,14 +112,21 @@ describe("ProblemLogDetailPage", () => {
     const update = vi.spyOn(store, "updateTags");
     open(`/app/history/${FLAGGED}`, store);
     await screen.findByLabelText("Topic");
-    fireEvent.change(screen.getByLabelText("Grade level"), { target: { value: "intro_undergrad" } });
+    fireEvent.change(screen.getByLabelText("Grade level"), {
+      target: { value: "intro_undergrad" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Save tags" }));
     expect(await screen.findByText("Saved.")).toBeInTheDocument();
 
     const sent = update.mock.calls[0]?.[1] as TagEdit;
-    expect(Object.keys(sent).sort()).toEqual(
-      ["difficulty", "grade_level", "needs_review", "review_reason", "subtopic", "topic"],
-    );
+    expect(Object.keys(sent).sort()).toEqual([
+      "difficulty",
+      "grade_level",
+      "needs_review",
+      "review_reason",
+      "subtopic",
+      "topic",
+    ]);
     expect(sent).toMatchObject({ grade_level: "intro_undergrad", needs_review: false });
     expect(screen.getByText("Admin")).toBeInTheDocument(); // tag_source after the edit
     expect(screen.getByText(/Last edited/)).toBeInTheDocument();
@@ -146,7 +156,8 @@ describe("ProblemLogDetailPage", () => {
     const store = sampleProblemLog();
     open(`/app/history/${FLAGGED}`, {
       ...store,
-      updateTags: () => Promise.reject(new TagEditError("Those tags aren’t an allowed combination.")),
+      updateTags: () =>
+        Promise.reject(new TagEditError("Those tags aren’t an allowed combination.")),
     });
     await screen.findByLabelText("Topic");
     fireEvent.click(screen.getByRole("button", { name: "Save tags" }));
@@ -157,7 +168,10 @@ describe("ProblemLogDetailPage", () => {
   it("an unexpected save error gets a generic message", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const store = sampleProblemLog();
-    open(`/app/history/${FLAGGED}`, { ...store, updateTags: () => Promise.reject(new Error("socket")) });
+    open(`/app/history/${FLAGGED}`, {
+      ...store,
+      updateTags: () => Promise.reject(new Error("socket")),
+    });
     await screen.findByLabelText("Topic");
     fireEvent.click(screen.getByRole("button", { name: "Save tags" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/couldn’t be saved/));

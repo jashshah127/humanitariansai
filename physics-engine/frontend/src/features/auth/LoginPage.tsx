@@ -83,9 +83,16 @@ export default function LoginPage() {
         <Link to="/reset-password">Forgot your password?</Link>
         <Link to="/signup">Create an account</Link>
       </p>
-            <div className={styles.guest}>
-        <p className={styles.note}>Just looking? Try solving 3 problems as a guest, no account needed.</p>
-        <Button variant="secondary" loading={guestBusy} disabled={busy} onClick={() => void continueAsGuest()}>
+      <div className={styles.guest}>
+        <p className={styles.note}>
+          Just looking? Try solving 3 problems as a guest, no account needed.
+        </p>
+        <Button
+          variant="secondary"
+          loading={guestBusy}
+          disabled={busy}
+          onClick={() => void continueAsGuest()}
+        >
           {guestBusy ? "Starting…" : "Continue as a guest"}
         </Button>
       </div>

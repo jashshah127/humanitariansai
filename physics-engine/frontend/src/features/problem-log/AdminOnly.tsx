@@ -13,7 +13,7 @@ export function AdminOnly({ store, children }: { store: ProblemLogStore; childre
   const [access, setAccess] = useState<"checking" | "admin" | "denied" | "error">("checking");
 
   useEffect(() => {
-if (isGuest) return;
+    if (isGuest) return;
     let live = true;
     store.isAdmin().then(
       (ok) => {
@@ -49,4 +49,3 @@ if (isGuest) return;
     </main>
   );
 }
-

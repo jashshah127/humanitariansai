@@ -13,6 +13,18 @@ export interface ButtonLinkProps extends LinkProps {
  * A link that looks like a Button. Use it to go to another page, so "open in new tab",
  * middle-click and the browser's own link handling keep working. Use Button for actions.
  */
-export function ButtonLink({ variant = "primary", size = "md", className, ...rest }: ButtonLinkProps) {
-  return <Link className={cx(styles.button, className)} data-variant={variant} data-size={size} {...rest} />;
+export function ButtonLink({
+  variant = "primary",
+  size = "md",
+  className,
+  ...rest
+}: ButtonLinkProps) {
+  return (
+    <Link
+      className={cx(styles.button, className)}
+      data-variant={variant}
+      data-size={size}
+      {...rest}
+    />
+  );
 }

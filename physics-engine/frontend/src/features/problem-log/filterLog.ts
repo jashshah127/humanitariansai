@@ -14,7 +14,12 @@ export interface LogFilters {
   verification: VerificationState | "all";
 }
 
-export const NO_LOG_FILTERS: LogFilters = { search: "", review: "all", topic: ALL, verification: "all" };
+export const NO_LOG_FILTERS: LogFilters = {
+  search: "",
+  review: "all",
+  topic: ALL,
+  verification: "all",
+};
 
 export function filterLog(rows: LogEntry[], f: LogFilters): LogEntry[] {
   const q = f.search.trim().toLowerCase();
