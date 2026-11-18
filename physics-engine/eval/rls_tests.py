@@ -20,6 +20,7 @@ Standard library only. Needs: the local stack running, Docker (to bootstrap the 
 and clean up, as an operator would), and npx (to read the local URL and keys).
 """
 import json
+import shutil
 import subprocess
 import sys
 import urllib.error
@@ -32,7 +33,7 @@ EMAIL = "rlstest-{}-" + RUN + "@test.dev"
 PASSWORD = "local-only-Passw0rd!"
 TEXT_TAG = f"[rls-test {RUN}]"
 DB_CONTAINER = "supabase_db_local-dev"
-CLI = ["npx", "--yes", "supabase@2.121.0"]
+CLI = [shutil.which("npx") or "npx", "supabase@2.121.0"]
 
 failures = []
 
