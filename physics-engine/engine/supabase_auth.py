@@ -72,7 +72,8 @@ def verify_supabase_token(token, fetch=None):
     if status == 200:
         try:
             user = json.loads(body)
-            return {"id": user["id"], "email": user.get("email")}
+            return {"id": user["id"], "email": user.get("email"),
+                    "is_anonymous": bool(user.get("is_anonymous"))}
         except (ValueError, KeyError, TypeError):
             raise AuthUnavailable("unexpected response from Supabase Auth")
     if status in (401, 403):
