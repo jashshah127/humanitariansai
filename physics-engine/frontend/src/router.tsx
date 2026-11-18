@@ -7,6 +7,8 @@ import LoginPage from "./features/auth/LoginPage.tsx";
 import SignupPage from "./features/auth/SignupPage.tsx";
 import ResetPasswordPage from "./features/auth/ResetPasswordPage.tsx";
 import { RequireAuth } from "./features/auth/RequireAuth.tsx";
+import HistoryPage from "./features/history/HistoryPage.tsx";
+import HistoryDetailPage from "./features/history/HistoryDetailPage.tsx";
 
 // // "/" sends everyone to the workspace at /app (the old app is retired).
 // doesn't change while /app is being tested.
@@ -27,6 +29,22 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
       },
+        {
+    path: "/app/history",
+    element: (
+      <RequireAuth>
+        <HistoryPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/app/history/:id",
+    element: (
+      <RequireAuth>
+        <HistoryDetailPage />
+      </RequireAuth>
+    ),
+  },
       { path: "/login", element: <LoginPage /> },
       { path: "/signup", element: <SignupPage /> },
       { path: "/reset-password", element: <ResetPasswordPage /> },
