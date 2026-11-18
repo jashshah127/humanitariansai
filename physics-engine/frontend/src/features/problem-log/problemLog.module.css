@@ -49,25 +49,10 @@
 /* ---- Filters ---- */
 .filters {
   display: grid;
-  grid-template-columns: 2fr repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
-  align-items: end;
+  align-items: start;
   margin-bottom: var(--space-4);
-}
-.label {
-  display: block;
-  margin-bottom: var(--space-2);
-  font-weight: var(--weight-medium);
-  color: var(--color-text);
-}
-.select {
-  width: auto;
-  padding: var(--space-2) var(--space-3);
-  font: inherit;
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
 }
 
 /* ---- List ---- */
@@ -108,7 +93,12 @@
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 32rem) {
+@media (max-width: 40rem) {
+  .filters {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 28rem) {
   .filters {
     grid-template-columns: 1fr;
   }
@@ -154,9 +144,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
   gap: var(--space-4);
-}
-.fields .select {
-  width: 100%;
 }
 .check {
   display: inline-flex;

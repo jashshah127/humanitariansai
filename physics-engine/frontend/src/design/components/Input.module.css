@@ -30,6 +30,17 @@
   border-radius: var(--radius-sm);
 }
 
+/* Single-line fields (inputs and selects) are exactly the height of a medium Button,
+   so a row of fields and buttons lines up on every page. */
+.control:not(.textarea) {
+  height: 44px;
+  padding-block: 0;
+}
+
+.select {
+  cursor: pointer;
+}
+
 .control::placeholder {
   color: var(--color-text-muted);
 }

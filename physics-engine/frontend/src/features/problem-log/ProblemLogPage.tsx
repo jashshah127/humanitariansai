@@ -1,10 +1,10 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { DIFFICULTY_LABELS, GRADE_LABELS, problemLogStore } from "../../api/problemLog.ts";
 import type { LogEntry, ProblemLogStore } from "../../api/problemLog.ts";
 import { VerificationBadge } from "../../design/components/Badge.tsx";
 import { Button } from "../../design/components/Button.tsx";
-import { Input } from "../../design/components/Input.tsx";
+import { Input, Select } from "../../design/components/Input.tsx";
 import { DEFAULT_LABELS, VERIFICATION_STATES } from "../../design/components/verification.ts";
 import type { VerificationState } from "../../design/components/verification.ts";
 import { AdminOnly } from "./AdminOnly.tsx";
@@ -28,9 +28,6 @@ function LogList({ store }: { store: ProblemLogStore }) {
   const [load, setLoad] = useState<Load>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [filters, setFilters] = useState<LogFilters>(NO_LOG_FILTERS);
-  const reviewId = useId();
-  const topicId = useId();
-  const stateId = useId();
   const set = (patch: Partial<LogFilters>) => setFilters((f) => ({ ...f, ...patch }));
 
   useEffect(() => {
@@ -60,7 +57,7 @@ function LogList({ store }: { store: ProblemLogStore }) {
         <Link to="/app" className={styles.back}>
           ← Back to the workspace
         </Link>
-        <h1 className={styles.title}>Problem history</h1>
+        <h1 className={styles.title}>Problem logs</h1>
         <p className={styles.lead}>
           Every problem asked, with its tags. Personal details are removed and no row says who
           asked it.
@@ -111,58 +108,36 @@ function LogList({ store }: { store: ProblemLogStore }) {
               placeholder="e.g. pulley"
               onChange={(e) => set({ search: e.target.value })}
             />
-            <div>
-              <label htmlFor={reviewId} className={styles.label}>
-                Review
-              </label>
-              <select
-                id={reviewId}
-                className={styles.select}
-                value={filters.review}
-                onChange={(e) => set({ review: e.target.value as LogFilters["review"] })}
-              >
-                <option value="all">All</option>
-                <option value="needs_review">Needs review</option>
-                <option value="reviewed">Doesn’t need review</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor={topicId} className={styles.label}>
-                Topic
-              </label>
-              <select
-                id={topicId}
-                className={styles.select}
-                value={filters.topic}
-                onChange={(e) => set({ topic: e.target.value })}
-              >
-                <option value={ALL}>All</option>
-                {topics.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-                <option value={UNTAGGED}>Not tagged</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor={stateId} className={styles.label}>
-                Verification
-              </label>
-              <select
-                id={stateId}
-                className={styles.select}
-                value={filters.verification}
-                onChange={(e) => set({ verification: e.target.value as VerificationState | "all" })}
-              >
-                <option value="all">All</option>
-                {VERIFICATION_STATES.map((s) => (
-                  <option key={s} value={s}>
-                    {DEFAULT_LABELS[s]}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              label="Review"
+              value={filters.review}
+              onChange={(e) => set({ review: e.target.value as LogFilters["review"] })}
+            >
+              <option value="all">All</option>
+              <option value="needs_review">Needs review</option>
+              <option value="reviewed">Doesn’t need review</option>
+            </Select>
+            <Select label="Topic" value={filters.topic} onChange={(e) => set({ topic: e.target.value })}>
+              <option value={ALL}>All</option>
+              {topics.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+              <option value={UNTAGGED}>Not tagged</option>
+            </Select>
+            <Select
+              label="Verification"
+              value={filters.verification}
+              onChange={(e) => set({ verification: e.target.value as VerificationState | "all" })}
+            >
+              <option value="all">All</option>
+              {VERIFICATION_STATES.map((s) => (
+                <option key={s} value={s}>
+                  {DEFAULT_LABELS[s]}
+                </option>
+              ))}
+            </Select>
           </div>
 
           <p className={styles.status} aria-live="polite">

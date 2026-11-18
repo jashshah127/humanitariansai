@@ -20,7 +20,7 @@ import type {
 import { useAuth } from "../auth/AuthContext.ts";
 import { VerificationBadge } from "../../design/components/Badge.tsx";
 import { Button } from "../../design/components/Button.tsx";
-import { Input } from "../../design/components/Input.tsx";
+import { Input, Select } from "../../design/components/Input.tsx";
 import { AdminOnly } from "./AdminOnly.tsx";
 import { formatExact, formatHour, TAG_SOURCE_LABELS } from "./display.ts";
 import styles from "./problemLog.module.css";
@@ -69,7 +69,7 @@ function Detail({ store }: { store: ProblemLogStore }) {
     <main className={styles.page}>
       <header className={styles.header}>
         <Link to="/app/history" className={styles.back}>
-          ← All problems
+          ← All problem logs
         </Link>
       </header>
 
@@ -191,7 +191,7 @@ function TagForm({
   const [note, setNote] = useState(row.review_reason ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const ids = { topic: useId(), subtopic: useId(), grade: useId(), difficulty: useId(), review: useId() };
+  const reviewId = useId();
 
   const topicNames = [...new Set(topics.map((t) => t.topic))];
   const subtopics = topics.filter((t) => t.topic === topic).map((t) => t.subtopic);
@@ -240,84 +240,60 @@ function TagForm({
       )}
 
       <div className={styles.fields}>
-        <div>
-          <label htmlFor={ids.topic} className={styles.label}>
-            Topic
-          </label>
-          <select
-            id={ids.topic}
-            className={styles.select}
-            value={topic}
-            onChange={(e) => {
-              const next = e.target.value;
-              const subs = topics.filter((t) => t.topic === next).map((t) => t.subtopic);
-              touched(setTopic)(next);
-              setSubtopic(subs.length === 1 ? (subs[0] ?? "") : "");
-            }}
-          >
-            {!topic && <option value="">Choose a topic</option>}
-            {topicNames.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor={ids.subtopic} className={styles.label}>
-            Subtopic
-          </label>
-          <select
-            id={ids.subtopic}
-            className={styles.select}
-            value={subtopic}
-            disabled={!topic}
-            onChange={(e) => touched(setSubtopic)(e.target.value)}
-          >
-            {!subtopic && <option value="">Choose a subtopic</option>}
-            {subtopics.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor={ids.grade} className={styles.label}>
-            Grade level
-          </label>
-          <select
-            id={ids.grade}
-            className={styles.select}
-            value={grade}
-            onChange={(e) => touched(setGrade)(e.target.value as Grade | "")}
-          >
-            <option value="">Not set</option>
-            {GRADES.map((g) => (
-              <option key={g} value={g}>
-                {GRADE_LABELS[g]}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor={ids.difficulty} className={styles.label}>
-            Difficulty
-          </label>
-          <select
-            id={ids.difficulty}
-            className={styles.select}
-            value={difficulty}
-            onChange={(e) => touched(setDifficulty)(e.target.value as Difficulty | "")}
-          >
-            <option value="">Not set</option>
-            {DIFFICULTIES.map((d) => (
-              <option key={d} value={d}>
-                {DIFFICULTY_LABELS[d]}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label="Topic"
+          value={topic}
+          onChange={(e) => {
+            const next = e.target.value;
+            const subs = topics.filter((t) => t.topic === next).map((t) => t.subtopic);
+            touched(setTopic)(next);
+            setSubtopic(subs.length === 1 ? (subs[0] ?? "") : "");
+          }}
+        >
+          {!topic && <option value="">Choose a topic</option>}
+          {topicNames.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </Select>
+        <Select
+          label="Subtopic"
+          value={subtopic}
+          disabled={!topic}
+          onChange={(e) => touched(setSubtopic)(e.target.value)}
+        >
+          {!subtopic && <option value="">Choose a subtopic</option>}
+          {subtopics.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </Select>
+        <Select
+          label="Grade level"
+          value={grade}
+          onChange={(e) => touched(setGrade)(e.target.value as Grade | "")}
+        >
+          <option value="">Not set</option>
+          {GRADES.map((g) => (
+            <option key={g} value={g}>
+              {GRADE_LABELS[g]}
+            </option>
+          ))}
+        </Select>
+        <Select
+          label="Difficulty"
+          value={difficulty}
+          onChange={(e) => touched(setDifficulty)(e.target.value as Difficulty | "")}
+        >
+          <option value="">Not set</option>
+          {DIFFICULTIES.map((d) => (
+            <option key={d} value={d}>
+              {DIFFICULTY_LABELS[d]}
+            </option>
+          ))}
+        </Select>
       </div>
 
       <Input
@@ -327,9 +303,9 @@ function TagForm({
         onChange={(e) => touched(setNote)(e.target.value)}
       />
 
-      <label htmlFor={ids.review} className={styles.check}>
+      <label htmlFor={reviewId} className={styles.check}>
         <input
-          id={ids.review}
+          id={reviewId}
           type="checkbox"
           checked={stillNeedsReview}
           onChange={(e) => touched(setStillNeedsReview)(e.target.checked)}
