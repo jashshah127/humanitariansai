@@ -7,6 +7,8 @@ import LoginPage from "./features/auth/LoginPage.tsx";
 import SignupPage from "./features/auth/SignupPage.tsx";
 import ResetPasswordPage from "./features/auth/ResetPasswordPage.tsx";
 import { RequireAuth } from "./features/auth/RequireAuth.tsx";
+import ProblemLogPage from "./features/problem-log/ProblemLogPage.tsx";
+import ProblemLogDetailPage from "./features/problem-log/ProblemLogDetailPage.tsx";
 import HistoryPage from "./features/history/HistoryPage.tsx";
 import HistoryDetailPage from "./features/history/HistoryDetailPage.tsx";
 
@@ -29,22 +31,22 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
       },
-      {
-        path: "/app/history",
-        element: (
-          <RequireAuth>
-            <HistoryPage />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "/app/history/:id",
-        element: (
-          <RequireAuth>
-            <HistoryDetailPage />
-          </RequireAuth>
-        ),
-      },
+        {
+    path: "/app/history",
+    element: (
+      <RequireAuth>
+        <ProblemLogPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/app/history/:id",
+    element: (
+      <RequireAuth>
+        <ProblemLogDetailPage />
+      </RequireAuth>
+    ),
+  },
       { path: "/login", element: <LoginPage /> },
       { path: "/signup", element: <SignupPage /> },
       { path: "/reset-password", element: <ResetPasswordPage /> },
