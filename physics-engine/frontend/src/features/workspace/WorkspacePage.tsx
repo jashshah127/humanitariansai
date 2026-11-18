@@ -20,6 +20,8 @@ import type { WorkspaceMode } from "./mode.ts";
 import { ModeToggle } from "./ModeToggle.tsx";
 import { ProblemInput } from "./ProblemInput.tsx";
 import { ProblemLogLink } from "../problem-log/ProblemLogLink.tsx";
+import { GuestBanner, GuestLimit } from "../guest/GuestNotices.tsx";
+import type { LeaveTo } from "../guest/GuestNotices.tsx";
 import styles from "./workspace.module.css";
 
 /** After this long, tell the student the wait is normal (cold start, provider retries). */
@@ -30,10 +32,13 @@ export default function WorkspacePage() {
   const mode = parseMode(params.get("mode"));
 
   const [query, setQuery] = useState("");
-  const { token, session, signOut } = useAuth();
+    const { token, session, signOut, isGuest } = useAuth();
   const navigate = useNavigate();
   const [result, setResult] = useState<SolveResponse | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
+    // Guests only: what the server said is left after the last problem. null until then.
+  const [guestRemaining, setGuestRemaining] = useState<number | null>(null);
+  const guestOut = isGuest && (guestRemaining === 0 || error?.kind === "guest");
   const [loading, setLoading] = useState(false);
   const [slow, setSlow] = useState(false);
   // A new key per result resets the hint ladder; otherwise a new problem
@@ -70,7 +75,7 @@ export default function WorkspacePage() {
   // In grade mode the button sets up answer boxes; once they exist for this exact text,
   // pressing it again would only spend another model call.
   const canSubmit =
-    !!trimmed && trimmed.length <= MAX_CHARS && !loading && !(mode === "grade" && setupCurrent);
+    !!trimmed && trimmed.length <= MAX_CHARS && !loading && !(mode === "grade" && setupCurrent) && !guestOut;
   const submitLabel = MODES.find((m) => m.value === mode)?.submit ?? "Solve";
   // Only when nothing is on screen yet. With an older result showing, that result
   // stays (dimmed) instead, so the page doesn't jump.
@@ -147,6 +152,7 @@ export default function WorkspacePage() {
         const data = await solve({ query: trimmed, render, token, signal });
         setResult(data);
         setResultId((n) => n + 1);
+        if (typeof data.guest_remaining === "number") setGuestRemaining(data.guest_remaining);
       },
       () => setResult(null),
     );
@@ -157,6 +163,7 @@ export default function WorkspacePage() {
       const data = await parseForGrading({ query: text, token, signal });
       setSetup({ query: text, data });
       setSetupId((n) => n + 1);
+      if (typeof data.guest_remaining === "number") setGuestRemaining(data.guest_remaining);
       setGraded(null);
       setWrongAttempts(0);
     });
@@ -173,12 +180,19 @@ export default function WorkspacePage() {
     });
   }
 
+  /** Sign-up and sign-in send signed-in visitors to /app, so the guest session ends first. */
+  async function leaveGuest(to: LeaveTo) {
+    await signOut();
+    navigate(to);
+  }
+
   return (
     <main className={styles.page}>
       <header className={styles.header}>
         <div className={styles.account}>
          <ProblemLogLink />
           {session?.user.email && <span className={styles.accountEmail}>{session.user.email}</span>}
+          {isGuest && <span className={styles.accountEmail}>Guest</span>}
           <Button variant="ghost" size="sm" onClick={() => void signOut()}>
             Sign out
           </Button>
@@ -188,7 +202,9 @@ export default function WorkspacePage() {
           Every answer says whether it was checked by a symbolic solver, or admits it wasn’t.
         </p>
       </header>
-
+      {isGuest && (
+        <GuestBanner remaining={error?.kind === "guest" ? 0 : guestRemaining} onLeave={(to) => void leaveGuest(to)} />
+      )}
       <form
         className={styles.form}
         onSubmit={(e) => {
@@ -220,9 +236,12 @@ export default function WorkspacePage() {
           </p>
         )}
         {showSkeleton && <ResultSkeleton />}
-        {error && (
-          <ErrorState key={errorId} error={error} onRetry={() => lastRequestRef.current?.()} />
-        )}
+        {error &&
+          (error.kind === "guest" ? (
+            <GuestLimit message={error.message} onLeave={(to) => void leaveGuest(to)} />
+          ) : (
+            <ErrorState key={errorId} error={error} onRetry={() => lastRequestRef.current?.()} />
+          ))}
         {empty && <EmptyWorkspace mode={mode} />}
         {mode !== "grade" && result && <ResultPanel key={resultId} data={result} busy={loading} />}
         {mode === "grade" && setup && setupCurrent && (

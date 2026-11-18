@@ -1,5 +1,6 @@
 // Supabase's error messages, reworded for students. Anything not listed is shown as is.
 const FRIENDLY: [RegExp, string][] = [
+      [/anonymous sign-ins are disabled/i, "Guest access isn't available right now. Create an account instead."],
   [/invalid login credentials/i, "That email and password don't match."],
   [/email not confirmed/i, "Confirm your email first. Check your inbox for the link."],
   [/rate limit|too many/i, "Too many emails were sent recently. Try again in an hour."],

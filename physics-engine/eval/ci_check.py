@@ -344,10 +344,11 @@ def me_reports_role():
         supabase_auth._urllib_fetch = real_fetch
 
     checks = {
-        "admin": (got_admin, {"kind": "supabase", "id": "u1", "email": "admin@test.dev", "role": "admin"}),
+        "admin": (got_admin, {"kind": "supabase", "id": "u1", "email": "admin@test.dev",
+                              "role": "admin", "guest": False}),
         "user": (got_user.get("role") if isinstance(got_user, dict) else got_user, "user"),
         "no profile": (got_none.get("role") if isinstance(got_none, dict) else got_none, None),
-        "minted": (got_minted, {"kind": "minted", "sub": "ci", "role": None}),
+        "minted": (got_minted, {"kind": "minted", "sub": "ci", "role": None, "guest": False}),
         "lookup down": (got_down, "unavailable"),
     }
     wrong = {k: got for k, (got, want) in checks.items() if got != want}
@@ -355,6 +356,81 @@ def me_reports_role():
         return False, f"wrong /me result for: {wrong}"
     return True, "admin/user role from own profile; minted -> no role; lookup failure -> unavailable"
 
+def guest_limit_rules():
+    """Guests are counted before every model call and refused (403) at their limit or the
+    daily cap; if the count can't be checked, guests are refused (503), never let through;
+    real users and minted tokens are never counted; /me reports guests."""
+    import json
+    sys.path.insert(0, os.path.join(HERE, ".."))
+    import server
+    import guest_limits
+    import supabase_auth
+
+    class FakeHandler:
+        def __init__(self, caller):
+            self.caller, self.status, self.payload = caller, None, None
+
+        def _send(self, code, payload):
+            self.status, self.payload = code, payload
+
+    calls = []
+    reply = {"value": (200, b'{"status": "ok", "remaining": 2}')}
+
+    def fake_post(url, headers, body, timeout):
+        calls.append(json.loads(body))
+        r = reply["value"]
+        if isinstance(r, Exception):
+            raise r
+        return r
+
+    guest = {"kind": "supabase", "id": "g1", "email": None, "is_anonymous": True, "token": "t"}
+    member = {"kind": "supabase", "id": "u1", "email": "a@test.dev", "is_anonymous": False, "token": "t"}
+    minted = {"kind": "minted", "sub": "ci", "token": "t"}
+
+    def gate(caller):
+        h = FakeHandler(caller)
+        ok, remaining = server._guest_gate(h)
+        return ok, remaining, h.status, (h.payload or {}).get("guest_limit")
+
+    cases = {}
+    real_post, guest_limits._urllib_post = guest_limits._urllib_post, fake_post
+    try:
+        with _EnvPatch(SUPABASE_URL="http://supabase.test", SUPABASE_SECRET_KEY="sk",
+                       GUEST_PROBLEM_LIMIT="3", GUEST_DAILY_CAP="10"):
+            cases["real user never counted"] = (gate(member), (True, None, None, None))
+            cases["minted never counted"] = (gate(minted), (True, None, None, None))
+            if calls:
+                return False, "a non-guest was counted"
+            cases["guest allowed, remaining reported"] = (gate(guest), (True, 2, None, None))
+            cases["limits sent to the database"] = (
+                (calls[-1]["p_user"], calls[-1]["p_per_guest"], calls[-1]["p_daily"]), ("g1", 3, 10))
+            reply["value"] = (200, b'{"status": "guest_limit", "remaining": 0}')
+            cases["guest at limit -> 403"] = (gate(guest), (False, None, 403, "guest_limit"))
+            reply["value"] = (200, b'{"status": "daily_limit", "remaining": 1}')
+            cases["daily cap -> 403"] = (gate(guest), (False, None, 403, "daily_limit"))
+            reply["value"] = (500, b"{}")
+            cases["Supabase error -> refused"] = (gate(guest), (False, None, 503, None))
+            reply["value"] = TimeoutError()
+            cases["Supabase down -> refused"] = (gate(guest), (False, None, 503, None))
+            reply["value"] = (200, b'{"status": "not_guest", "remaining": null}')
+            cases["database says not a guest -> refused"] = (gate(guest), (False, None, 503, None))
+        with _EnvPatch(SUPABASE_URL="http://supabase.test", SUPABASE_SECRET_KEY=None):
+            cases["no secret key -> guests refused"] = (gate(guest), (False, None, 503, None))
+    finally:
+        guest_limits._urllib_post = real_post
+
+    with _EnvPatch(SUPABASE_URL="http://supabase.test", SUPABASE_PUBLISHABLE_KEY="pk"):
+        user = supabase_auth.verify_supabase_token(
+            "t", fetch=lambda url, headers, timeout: (200, b'{"id": "g1", "is_anonymous": true}'))
+    cases["token check passes is_anonymous through"] = (user.get("is_anonymous"), True)
+    cases["/me reports a guest, no role lookup"] = (
+        server.api_me(guest), {"kind": "supabase", "id": "g1", "email": None, "role": None, "guest": True})
+
+    wrong = {k: got for k, (got, want) in cases.items() if got != want}
+    if wrong:
+        return False, f"wrong for: {wrong}"
+    return True, ("guests counted, 403 at limit/cap, refused when the count can't be checked; "
+                  "real users and minted never counted")
 
 def classifier_labels_match_db():
     """The classifier's allowed (topic, subtopic) pairs must be exactly the rows the
@@ -756,6 +832,7 @@ if __name__ == "__main__":
     check("Supabase token rules", supabase_token_rules)
     check("server auth paths", server_auth_paths)
     check("GET /me reports role", me_reports_role)
+    check("guest limits", guest_limit_rules)
     print("\nClassifier invariants")
     check("classifier labels match the topics table", classifier_labels_match_db)
     check("classifier rules", classifier_rules)

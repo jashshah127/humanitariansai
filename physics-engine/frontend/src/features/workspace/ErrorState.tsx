@@ -19,7 +19,7 @@ export function ErrorState({ error, onRetry }: Props) {
     return () => clearTimeout(t);
   }, [wait]);
 
-  const canRetry = error.kind !== "auth";
+  const canRetry = error.kind !== "auth" && error.kind !== "guest";
 
   return (
     <div className={styles.error} role="alert">

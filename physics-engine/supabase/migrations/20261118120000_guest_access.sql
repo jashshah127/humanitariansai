@@ -1,6 +1,6 @@
--- Guest (anonymous) sign-in: a per-guest problem limit and a daily total for all guests.
+-- Guest (anonymous) sign-in: a per-guest problem limit and a daily total for all guest.
 -- The server enforces both, through use_guest_problem(); browsers can't read or change
--- any of this. With no CAPTCHA, the DAILY TOTAL is the real protection: new guests are
+-- any of this. With no CAPTCHA, the DAILY TOTAL is the real protection: new guest are
 -- free to create, so a per-guest limit alone never caps the total.
 
 -- 1. Problems used per guest. No policies: only the server (secret key) can touch it.
@@ -11,7 +11,7 @@ create table public.guest_usage (
 );
 alter table public.guest_usage enable row level security;
 
--- 2. Problems used by all guests together, per UTC day.
+-- 2. Problems used by all guest together, per UTC day.
 create table public.guest_daily_usage (
   day  date primary key,
   used int not null default 0 check (used >= 0)
@@ -32,7 +32,7 @@ declare
   v_total int;
   v_today date := (now() at time zone 'utc')::date;
 begin
-  -- Only guests are counted: a server bug must never charge a real account.
+  -- Only guest are counted: a server bug must never charge a real account.
   if not exists (select 1 from auth.users where id = p_user and is_anonymous) then
     return jsonb_build_object('status', 'not_guest', 'remaining', null);
   end if;

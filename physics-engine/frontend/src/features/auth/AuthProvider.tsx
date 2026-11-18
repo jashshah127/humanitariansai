@@ -45,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
       loading,
       configured: true,
+      isGuest: session?.user.is_anonymous === true,
       recoveryLink: arrivedFromRecoveryLink,
       linkError,
       role,
@@ -61,6 +62,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signOut() {
         await client.auth.signOut();
         setSession(null); // even if the network call failed, this tab is signed out
+      },
+        async signInAsGuest() {
+        await check(client.auth.signInAnonymously());
       },
       async requestReset(email) {
         await check(

@@ -3,9 +3,9 @@ GUEST LIMITS -- how many problems a guest (anonymous Supabase user) may still so
 
 The count lives in Supabase (migration 20261118120000_guest_access): one database
 function, use_guest_problem(), checks AND counts in a single locked step, per guest and
-for all guests per day. Browsers can't run it; only the server can, with the secret key.
+for all guest per day. Browsers can't run it; only the server can, with the secret key.
 
-With no CAPTCHA, the daily total is the real protection: new guests are free to create,
+With no CAPTCHA, the daily total is the real protection: new guest are free to create,
 so a per-guest limit alone never caps the total.
 
 Standard library only, like supabase_auth.py and problem_log.py.

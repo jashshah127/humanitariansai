@@ -9,7 +9,7 @@ import { messageOf } from "./authErrors.ts";
 import styles from "./auth.module.css";
 
 export default function LoginPage() {
-  const { session, loading, signIn } = useAuth();
+  const { session, loading, signIn, signInAsGuest } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [guestBusy, setGuestBusy] = useState(false);
 
   if (!loading && session) return <Navigate to={from} replace />;
 
@@ -32,6 +33,18 @@ export default function LoginPage() {
     } catch (err) {
       setError(messageOf(err));
       setBusy(false);
+    }
+  }
+
+  async function continueAsGuest() {
+    setGuestBusy(true);
+    setError(null);
+    try {
+      await signInAsGuest();
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError(messageOf(err));
+      setGuestBusy(false);
     }
   }
 
@@ -70,6 +83,12 @@ export default function LoginPage() {
         <Link to="/reset-password">Forgot your password?</Link>
         <Link to="/signup">Create an account</Link>
       </p>
+            <div className={styles.guest}>
+        <p className={styles.note}>Just looking? Try solving 3 problems as a guest, no account needed.</p>
+        <Button variant="secondary" loading={guestBusy} disabled={busy} onClick={() => void continueAsGuest()}>
+          {guestBusy ? "Starting…" : "Continue as a guest"}
+        </Button>
+      </div>
     </AuthLayout>
   );
 }

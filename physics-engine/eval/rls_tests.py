@@ -338,7 +338,7 @@ def guest_tests(alice):
           (st, d) == (200, []) or (st in (401, 403) and code(d) == "42501"), True)
     check("  ...the count is still 3", sql(f"select used from public.guest_usage where user_id = '{g_id}'"), "3")
 
-    # Cleanup of old guests relies on this.
+    # Cleanup of old guest relies on this.
     sql(f"delete from auth.users where id = '{g_id}'")
     check("deleting a guest deletes their usage row",
           sql(f"select count(*) from public.guest_usage where user_id = '{g_id}'"), "0")
