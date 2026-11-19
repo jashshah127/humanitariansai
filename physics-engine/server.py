@@ -69,6 +69,7 @@ import problem_log
 import guest_limits
 from classifier import GeminiClassifierLLM
 from rate_limit import RateLimiter
+from llm_cache import wrap_llm, stats_snapshot
 import static_files
 
 # Global, not per-caller -- see rate_limit.py's docstring for why. 8/min stays under
@@ -96,7 +97,7 @@ _problem_log = (problem_log.ProblemLogger(problem_log.SupabaseLogStore(), llm=_t
 API_GET = ("/health", "/cards", "/stats")
 
 
-def _llm():
+def _raw_llm():
     """Use every provider that has a key, in order: Gemini, then Claude.
     Falls back to the next one if a call fails. Ollama only if no keys are set.
     GEMINI_PARSE_MODEL overrides the Gemini model (e.g. when the default's quota is used up)."""
@@ -111,8 +112,13 @@ def _llm():
     return chain[0] if len(chain) == 1 else FallbackLLM(*chain)
 
 
+def _llm():
+    """The provider, wrapped in the cache when CACHE_ENABLED is set (otherwise unchanged)."""
+    return wrap_llm(_raw_llm())
+
+
 def api_health():
-    return {"status": "ok", "cards": len(ALL_CARDS), "provider": type(_llm()).__name__,
+    return {"status": "ok", "cards": len(ALL_CARDS), "provider": type(_raw_llm()).__name__,
             "frontend": "react" if static_files.built() else "inline"}
 
 
@@ -127,7 +133,8 @@ def api_cards():
 
 def api_stats():
     stats = {"routes": _log.route_split(), "latency": _log.latency_summary(),
-             "coverage_gaps": len(_log.coverage_gaps())}
+             "coverage_gaps": len(_log.coverage_gaps()),
+             "cache": stats_snapshot()}
     if _problem_log:         # counts only -- no problem text
         stats["problem_log"] = {"pending": _problem_log.pending(), "dropped": _problem_log.dropped,
                                 "outcomes": dict(_problem_log.outcomes)}
@@ -602,7 +609,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     port = int(os.environ.get("PORT", 8000))
-    provider = type(_llm()).__name__
+    provider = type(_raw_llm()).__name__
     ui = "React build (frontend/dist)" if static_files.built() else "inline fallback (no frontend/dist)"
     print(f"Physics Engine  |  {len(ALL_CARDS)} formula cards  |  parser: {provider}  |  UI: {ui}")
     if not (os.environ.get("GEMINI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")):
