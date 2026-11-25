@@ -15,7 +15,7 @@ on:
       - "physics-engine/frontend/package-lock.json"
       - ".github/workflows/dependency-audit.yml"
   push:
-    branches: [ main, add-dependency-audit ]   # remove add-dependency-audit before opening the pull request
+    branches: [ main ]
     paths:
       - "physics-engine/requirements.txt"
       - "physics-engine/frontend/package.json"
